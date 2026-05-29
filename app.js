@@ -23,9 +23,10 @@ let ocrWorker = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Try to load state from URL hash (shared link)
-    if (loadStateFromHash()) {
+    const hashView = loadStateFromHash();
+    if (hashView !== false) {
         renderAll();
-        goTo(4); // jump straight to summary if loaded from share link
+        goTo(hashView); // jump straight to saved view if loaded from share link
     }
 
     // File input listener
@@ -95,6 +96,7 @@ function goTo(step) {
     if (step === 4) renderSummary();
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (currentView >= 1) saveStateToHash();
 }
 
 function updateStepIndicator() {
@@ -628,10 +630,11 @@ const OCR_COLORS = {
 
 
 
+
 // ─── ITEM MANAGEMENT ──────────────────────────────────────────────────────────
 
 let _itemIdCounter = 1;
-function makeItem(name = '', price = 0) {
+function makeItem(name, price) {
     return { id: 'item_' + (_itemIdCounter++), name, price, disabled: false };
 }
 
@@ -841,7 +844,7 @@ function setTipPct(pct) {
 function onTipInput() {
     state.tip = parseFloat(document.getElementById('tipAmount').value) || 0;
     // Clear pct button highlights
-    [0, 5, 10, 15, 20, 25].forEach(p => document.getElementById(`tip${p}`).classList.remove('active'));
+    [0, 5, 10, 15, 20, 25].forEach(p => document.getElementById(`tip${p}`)?.classList.remove('active'));
     updateTotals();
 }
 
@@ -913,13 +916,14 @@ function updateTotals() {
     }
 
     updatePeopleButton();
+    saveStateToHash();
 }
 
 // ─── PEOPLE ───────────────────────────────────────────────────────────────────
 
 let _personIdCounter = 1;
 function makePerson(name) {
-    return { id: 'p_' + (_personIdCounter++), name };
+    return { id: 'person_' + (_personIdCounter++), name };
 }
 
 const AVATAR_COLORS = 8;
@@ -973,6 +977,7 @@ function renderPeople() {
       <button class="btn btn-danger" onclick="removePerson('${p.id}')" aria-label="Remove ${escHtml(p.name)}">✕</button>
     </div>
   `).join('');
+    saveStateToHash();
 }
 
 // goToAssign() removed — goTo(3) is called directly and goTo() already guards against 0 people.
@@ -1067,6 +1072,7 @@ function updateSummaryButton() {
         btn.disabled = hasUnassigned;
         btn.textContent = hasUnassigned ? 'Summary → (Assign all items first)' : 'Summary →';
     }
+    saveStateToHash();
 }
 
 // ─── RUNNING TOTALS ───────────────────────────────────────────────────────────
@@ -1193,26 +1199,73 @@ function loadStateFromHash() {
         const json = decodeURIComponent(
             atob(b64).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''));
         const payload = JSON.parse(json);
-        state.items = payload.items || [];
-        state.people = payload.people || [];
-        state.assignments = payload.assignments || {};
-        state.tip = payload.tip || 0;
-        state.receiptTotal = payload.receiptTotal ?? null;
+        
+        // Strict sanitization to prevent injections
+        const parsedItems = Array.isArray(payload.items) ? payload.items : [];
+        state.items = parsedItems.map(i => ({
+            id: String(i.id || '').replace(/[^a-zA-Z0-9_]/g, ''),
+            name: String(i.name || '').slice(0, 100),
+            price: Number(i.price) || 0,
+            disabled: !!i.disabled,
+            _ocrIdx: i._ocrIdx !== undefined ? Number(i._ocrIdx) : undefined
+        }));
+
+        const parsedPeople = Array.isArray(payload.people) ? payload.people : [];
+        state.people = parsedPeople.map(p => ({
+            id: String(p.id || '').replace(/[^a-zA-Z0-9_]/g, ''),
+            name: String(p.name || '').slice(0, 30)
+        }));
+
+        const parsedAssignments = payload.assignments && typeof payload.assignments === 'object' ? payload.assignments : {};
+        state.assignments = {};
+        for (const [itemId, personIds] of Object.entries(parsedAssignments)) {
+            const cleanItemId = String(itemId).replace(/[^a-zA-Z0-9_]/g, '');
+            if (Array.isArray(personIds)) {
+                state.assignments[cleanItemId] = personIds.map(pid => String(pid).replace(/[^a-zA-Z0-9_]/g, ''));
+            }
+        }
+
+        state.tip = Number(payload.tip) || 0;
+        state.receiptTotal = payload.receiptTotal != null && !isNaN(Number(payload.receiptTotal)) ? Number(payload.receiptTotal) : null;
 
         // Restore ID counters so new items don't clash
         state.items.forEach(i => {
-            const n = parseInt(i.id.replace('item_', ''));
+            const n = parseInt(i.id.replace('item_', '')) || 0;
             if (n >= _itemIdCounter) _itemIdCounter = n + 1;
         });
         state.people.forEach(p => {
-            const n = parseInt(p.id.replace('p_', ''));
+            const n = parseInt(p.id.replace('person_', '')) || 0;
             if (n >= _personIdCounter) _personIdCounter = n + 1;
         });
-        return true;
+        return payload.step !== undefined ? Number(payload.step) : 4;
     } catch (e) {
         console.warn('Failed to load state from URL:', e);
         return false;
     }
+}
+
+let _saveHashTimeout = null;
+function saveStateToHash() {
+    clearTimeout(_saveHashTimeout);
+    _saveHashTimeout = setTimeout(() => {
+        try {
+            const minimalState = {
+                step: currentView,
+                items: state.items,
+                people: state.people,
+                assignments: state.assignments,
+                tip: state.tip,
+                receiptTotal: state.receiptTotal
+            };
+            const json = JSON.stringify(minimalState);
+            const b64 = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g,
+                (match, p1) => String.fromCharCode('0x' + p1)
+            ));
+            window.history.replaceState(null, '', '#data=' + b64);
+        } catch (e) {
+            console.error("Failed to save state to hash:", e);
+        }
+    }, 500);
 }
 
 
@@ -1224,7 +1277,16 @@ function renderAll() {
     renderPeople();
     // Restore tip
     if (state.tip > 0) {
-        document.getElementById('tipAmount').value = state.tip.toFixed(2);
+        const tipEl = document.getElementById('tipAmount');
+        if (tipEl) tipEl.value = state.tip.toFixed(2);
+        
+        const sub = getSubtotal();
+        if (sub > 0) {
+            const pct = Math.round((state.tip / sub) * 100);
+            if ([0, 5, 10, 15, 20, 25].includes(pct)) {
+                document.getElementById(`tip${pct}`)?.classList.add('active');
+            }
+        }
     }
     // Restore user-entered receipt total
     const rtInput = document.getElementById('receiptTotalInput');
@@ -1240,6 +1302,7 @@ function startOver() {
         items: [], people: [], assignments: {}, tip: 0, receiptTotal: null,
         _ocrRaw: null, _ocrLines: [], _ocrTaggedLines: []
     };
+    clearTimeout(_saveHashTimeout);
     history.replaceState(null, '', location.pathname);
     // Clear file input and preview image
     const fileInput = document.getElementById('fileInput');

@@ -17,8 +17,4 @@ Client-side web application for scanning restaurant receipts, detecting items, a
 - Fix items detection
 - Fix CSP and harden it like applications
 - Review app.js
-- Check that bill and ticket are not present anymore
-- Remove number to tip
 - Remove inline js
-- Move JS to header
-- Add Base64 in URL hash
