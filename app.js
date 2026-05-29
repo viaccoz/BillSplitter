@@ -1,5 +1,5 @@
 /* ============================================================
-   BillSplit — app.js
+   BillSplitter — app.js
    Pure client-side. State is serialized to base64url in the
    URL hash for cross-device sharing.
    ============================================================ */
@@ -13,7 +13,7 @@ let state = {
     people: [],         // [{ id, name }]
     assignments: {},    // { itemId: [personId, ...] }
     tip: 0,             // tip amount in currency units
-    receiptTotal: null, // actual total printed on the ticket (user-entered)
+    receiptTotal: null, // actual total printed on the receipt (user-entered)
 };
 
 let currentView = 0;
@@ -123,23 +123,23 @@ function handleFile(file) {
         const img = document.getElementById('previewImg');
         img.src = ev.target.result;
         img.classList.add('visible');
-        
+
         // Hide upload zone and manual entry after selection
         document.getElementById('uploadZone').style.display = 'none';
         const manualEntryRow = document.getElementById('manualEntryRow');
         if (manualEntryRow) manualEntryRow.style.display = 'none';
 
-        // Automatically start scanning the bill
+        // Automatically start scanning the receipt
         runOCR();
     };
     reader.readAsDataURL(file);
     // Store file reference for OCR
-    window._billFile = file;
+    window._receiptFile = file;
 }
 
 async function runOCR() {
     if (ocrWorker) { console.warn('OCR already running — ignoring duplicate call.'); return; }
-    const file = window._billFile;
+    const file = window._receiptFile;
     if (!file) return;
 
     const progress = document.getElementById('ocrProgress');
@@ -189,7 +189,7 @@ async function runOCR() {
         state._ocrTaggedLines = taggedLines;
         state.items = parsed.length > 0 ? parsed : [makeItem('', 0)];
 
-        // Auto-fill ticket total from OCR if not already set by user
+        // Auto-fill receipt total from OCR if not already set by user
         if (detectedTotal != null && state.receiptTotal == null) {
             state.receiptTotal = detectedTotal;
             const rtInput = document.getElementById('receiptTotalInput');
@@ -200,7 +200,7 @@ async function runOCR() {
         const pBarContainer = document.querySelector('.progress-bar-container');
         if (pBarContainer) pBarContainer.classList.remove('visible');
         btnScan.disabled = false;
-        btnScan.textContent = '🔍 Scan Bill';
+        btnScan.textContent = '🔍 Scan Receipt';
 
         // Load the image into _ocrMapImg so the review canvas has it,
         // then automatically go to the next step (Review Items)
@@ -222,7 +222,7 @@ async function runOCR() {
         const pBarContainer = document.querySelector('.progress-bar-container');
         if (pBarContainer) pBarContainer.classList.remove('visible');
         btnScan.disabled = false;
-        btnScan.textContent = '🔍 Scan Bill';
+        btnScan.textContent = '🔍 Scan Receipt';
         alert('OCR failed. Please enter items manually.');
         state.items = [makeItem('', 0)];
         goTo(1);
@@ -277,7 +277,7 @@ function parseItemsWithTags(text, ocrLines) {
     const DISCOUNT_RE = /\d+[.,]?\d*\s*%\s*(rabatt|remise|discount|reduction|offert|reduc)/i;
     const PRICE_TOKEN_RE = /(?:^|[\s,;:£€$CHF])(\d{1,5}[.,]|\d{1,5}\s+)(\d{2})(?=\s|$|[^0-9])/g;
 
-    // Sort OCR lines by y0 coordinate to guarantee correct physical top-to-bottom order on the ticket.
+    // Sort OCR lines by y0 coordinate to guarantee correct physical top-to-bottom order on the receipt.
     // If they are on the same line (y0 difference < 5px), sort left-to-right (x0) to avoid overlapping.
     const sortedLines = [...(ocrLines || [])].sort((a, b) => {
         const yA = (a.bbox && a.bbox.y0) || 0;
@@ -497,7 +497,7 @@ function parseItemsWithTags(text, ocrLines) {
         }
     }
 
-    // ── Detect the printed ticket total ──────────────────────────────────────
+    // ── Detect the printed receipt total ──────────────────────────────────────
     const TOTAL_LABEL_RE = /\b(total|montant|amount\s*due|amount\s*payable|grand\s*total|net\s*total|sub\s*total|balance\s*due|to\s*pay|a\s*payer|à\s*payer|ttc|t\.t\.c|toaal|totaal|gesamt|gesamtbetrag|summe|betrag|espece|espèce|especes|espèces|cash|encaissement|enlevé|montant\s*total|total\s*ttc|total\s*tva|total\s*a\s*payer)\b/i;
     let detectedTotal = null;
     const candidates = [];
@@ -507,7 +507,7 @@ function parseItemsWithTags(text, ocrLines) {
         const tag = tempTags[idx];
         if (tag.ignored) continue;
         if (!TOTAL_LABEL_RE.test(tag.text)) continue;
-        
+
         const priceRe = /(\d{1,5}[.,]|\d{1,5}\s+)(\d{2})(?=\s|$|[^0-9])/g;
         let pm;
         while ((pm = priceRe.exec(tag.text)) !== null) {
@@ -527,14 +527,14 @@ function parseItemsWithTags(text, ocrLines) {
         const targetCents = Math.round(target * 100);
         const itemCents = items.map(i => Math.round(i.parsedPrice * 100));
         const N = items.length;
-        
+
         // Safety bound: target up to 10,000.00
         if (targetCents > 1000000 || targetCents <= 0 || N === 0) return null;
-        
+
         const dp = new Int32Array(targetCents + 1).fill(-1);
         dp[0] = 0;
-        const choices = Array.from({length: N}, () => new Uint8Array(targetCents + 1));
-        
+        const choices = Array.from({ length: N }, () => new Uint8Array(targetCents + 1));
+
         for (let i = 0; i < N; i++) {
             const coin = itemCents[i];
             if (coin <= 0) continue;
@@ -547,9 +547,9 @@ function parseItemsWithTags(text, ocrLines) {
                 }
             }
         }
-        
+
         if (dp[targetCents] === -1) return null;
-        
+
         const subset = new Set();
         let w = targetCents;
         for (let i = N - 1; i >= 0; i--) {
@@ -562,12 +562,12 @@ function parseItemsWithTags(text, ocrLines) {
     }
 
     let bestSubsetResult = null;
-    
+
     // 1. Try to find a candidate that equals a subset sum of PREVIOUS items
     for (const cand of candidates) {
         // Only consider items parsed BEFORE this candidate's line
         const validItemTags = tempTags.filter((t, i) => i < cand.tagIdx && t.type === 'item' && !t.ignored && t.parsedPrice > 0);
-        
+
         const subset = findBestSubset(validItemTags, cand.val);
         if (subset) {
             detectedTotal = cand.val;
@@ -875,26 +875,26 @@ function getAssignedSubtotal() {
 function updateTotals() {
     const sub = getSubtotal();
     const tip = state.tip || 0;
-    
+
     // Bottom bar of view-1
     const totEl = document.getElementById('totalDisplay');
     if (totEl) totEl.textContent = fmtPrice(sub + tip);
 
-    // Update persistent totals bar — Bill Total is always items subtotal (tip excluded)
-    const ptBillTotal = document.getElementById('ptBillTotal');
+    // Update persistent totals bar — Receipt Total is always items subtotal (tip excluded)
+    const ptReceiptTotal = document.getElementById('ptReceiptTotal');
     const ptAssigned = document.getElementById('ptAssigned');
     const ptMidLabel = document.getElementById('ptMidLabel');
     const ptDiff = document.getElementById('ptDiff');
 
-    if (ptBillTotal) ptBillTotal.textContent = fmtPrice(sub);
+    if (ptReceiptTotal) ptReceiptTotal.textContent = fmtPrice(sub);
 
-    // Steps 0-1 (Views 0 and 1): compare items total vs printed ticket total
+    // Steps 0-1 (Views 0 and 1): compare items total vs printed receipt total
     // Steps 2+  (Views 2+): compare items total vs assigned items total
     if (currentView < 2) {
-        if (ptMidLabel) ptMidLabel.textContent = 'Ticket Total';
-        const ticketTotal = state.receiptTotal ?? sub;
-        if (ptAssigned) ptAssigned.textContent = fmtPrice(ticketTotal);
-        const diff = sub - ticketTotal;
+        if (ptMidLabel) ptMidLabel.textContent = 'Receipt Total';
+        const displayedReceiptTotal = state.receiptTotal ?? sub;
+        if (ptAssigned) ptAssigned.textContent = fmtPrice(displayedReceiptTotal);
+        const diff = sub - displayedReceiptTotal;
         if (ptDiff) {
             ptDiff.textContent = Math.abs(diff) < 0.01 ? fmtPrice(0) : (diff >= 0 ? '+' : '-') + fmtPrice(Math.abs(diff));
             ptDiff.classList.toggle('pt-diff--ok', Math.abs(diff) < 0.01);
@@ -911,7 +911,7 @@ function updateTotals() {
             ptDiff.classList.toggle('pt-diff--warn', Math.abs(diff) >= 0.01);
         }
     }
-    
+
     updatePeopleButton();
 }
 
@@ -952,7 +952,7 @@ function removePerson(id) {
 function renderPeople() {
     const list = document.getElementById('peopleList');
     const btnToAssign = document.getElementById('btnToAssign');
-    
+
     if (state.people.length === 0) {
         list.innerHTML = '<div class="empty-state"><div class="emoji">👥</div>No one added yet</div>';
         if (btnToAssign) {
@@ -965,7 +965,7 @@ function renderPeople() {
         btnToAssign.disabled = false;
         btnToAssign.textContent = 'Assign →';
     }
-    
+
     list.innerHTML = state.people.map((p, i) => `
     <div class="person-chip">
       <div class="person-avatar ${personColor(i)}">${personInitial(p.name)}</div>
@@ -1226,7 +1226,7 @@ function renderAll() {
     if (state.tip > 0) {
         document.getElementById('tipAmount').value = state.tip.toFixed(2);
     }
-    // Restore user-entered ticket total
+    // Restore user-entered receipt total
     const rtInput = document.getElementById('receiptTotalInput');
     if (rtInput && state.receiptTotal != null) {
         rtInput.value = state.receiptTotal.toFixed(2);
@@ -1235,7 +1235,7 @@ function renderAll() {
 }
 
 function startOver() {
-    if (!confirm('Start a new bill? This will clear everything.')) return;
+    if (!confirm('Start a new receipt? This will clear everything.')) return;
     state = {
         items: [], people: [], assignments: {}, tip: 0, receiptTotal: null,
         _ocrRaw: null, _ocrLines: [], _ocrTaggedLines: []
@@ -1256,14 +1256,14 @@ function startOver() {
     const btnScanEl = document.getElementById('btnScan');
     if (btnScanEl) btnScanEl.style.display = 'none';
     // Reset OCR canvas
-    window._billFile = null;
+    window._receiptFile = null;
     _ocrMapImg = null;
     _reviewCanvasScale = 1;
     // Clear tip UI
     const tipAmountEl = document.getElementById('tipAmount');
     if (tipAmountEl) tipAmountEl.value = '';
     [0, 5, 10, 15, 20, 25].forEach(p => document.getElementById(`tip${p}`)?.classList.remove('active'));
-    // Clear ticket total UI
+    // Clear receipt total UI
     const receiptTotalEl = document.getElementById('receiptTotalInput');
     if (receiptTotalEl) receiptTotalEl.value = '';
     goTo(0);

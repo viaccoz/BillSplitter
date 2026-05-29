@@ -6,9 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0f0f1a">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="description" content="Split restaurant bills easily — scan, assign dishes, share with friends.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src blob:; connect-src 'self' data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net;">
-  <title>BillSplit — Smart Bill Splitter</title>
+  <meta name="description"
+    content="Client-side web application for scanning restaurant receipts, detecting items, and easily splitting the receipt">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src blob:; connect-src 'self' data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net;">
+  <title>BillSplitter</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,7 +23,7 @@
     <!-- HEADER -->
     <header class="app-header">
       <div class="app-logo">🧾</div>
-      <div class="app-title">BillSplit</div>
+      <div class="app-title">BillSplitter</div>
     </header>
 
     <!-- STEP INDICATOR -->
@@ -41,7 +43,7 @@
     <div class="persistent-totals" id="persistentTotals">
       <div class="pt-cell">
         <div class="pt-label">Total</div>
-        <div class="pt-value" id="ptBillTotal">0.00</div>
+        <div class="pt-value" id="ptReceiptTotal">0.00</div>
       </div>
       <div class="pt-divider"></div>
       <div class="pt-cell">
@@ -55,14 +57,14 @@
       </div>
     </div>
 
-    <!-- ===== VIEW 0: UPLOAD ===== -->
+    <!-- ===== VIEW 1: ADD RECEIPT ===== -->
     <section class="view active" id="view-0">
-      <h1 class="section-title">Scan Your Bill</h1>
-      <p class="section-subtitle">Take a photo or upload an image of your bill — we'll extract the items automatically.
+      <h1 class="section-title">Add Receipt</h1>
+      <p class="section-subtitle">Take a photo or upload an image of your receipt.
       </p>
 
       <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/*" capture="environment" aria-label="Upload bill image">
+        <input type="file" id="fileInput" accept="image/*" capture="environment" aria-label="Upload receipt image">
         <div class="upload-icon">📷</div>
         <div class="upload-text">
           <strong>Tap to take a photo</strong>
@@ -80,15 +82,13 @@
         </div>
       </div>
 
-      <img id="previewImg" class="preview-img" alt="Bill preview">
+      <img id="previewImg" class="preview-img" alt="Receipt preview">
 
       <div class="nav-row" style="margin-top:20px">
         <button class="btn btn-primary btn-full" id="btnScan" style="display:none" onclick="runOCR()">
-          🔍 Scan Bill
+          🔍 Scan Receipt
         </button>
       </div>
-
-
 
       <div class="nav-row" id="manualEntryRow">
         <button class="btn btn-secondary btn-full" onclick="skipToItems()">
@@ -97,7 +97,7 @@
       </div>
     </section>
 
-    <!-- ===== VIEW 1: REVIEW ITEMS ===== -->
+    <!-- ===== VIEW 2: REVIEW ITEMS ===== -->
     <section class="view" id="view-1">
       <h2 class="section-title">Review Items</h2>
       <p class="section-subtitle">Check the extracted items, edit prices or names, and add a tip.</p>
@@ -110,13 +110,14 @@
           </div>
           <div class="review-item-list" id="reviewItemList"></div>
         </div>
-        <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%" onclick="addItem()">+ Add Item</button>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%" onclick="addItem()">+ Add
+          Item</button>
       </div>
 
       <!-- Plain card — shown when items were entered manually -->
       <div id="reviewPlainPanel">
         <div class="card">
-          <div class="card-title">Bill Items</div>
+          <div class="card-title">Receipt Items</div>
           <div id="itemsList"></div>
           <button class="btn btn-secondary btn-sm" style="margin-top:14px" onclick="addItem()">+ Add Item</button>
         </div>
@@ -143,9 +144,9 @@
         </div>
       </div>
 
-      <!-- TICKET TOTAL -->
+      <!-- RECEIPT TOTAL -->
       <div class="card">
-        <div class="card-title">Ticket Total</div>
+        <div class="card-title">Receipt Total</div>
         <div class="tip-row" style="margin-top:0">
           <span class="tip-label">Total on receipt:</span>
           <div style="display:flex; gap:8px; align-items:center;">
@@ -155,7 +156,7 @@
           </div>
         </div>
         <div style="font-size:0.78rem;color:var(--text-muted);margin-top:8px">
-          Enter the printed total to compare it against the items subtotal.
+          Enter the printed total to compare it against the items total.
         </div>
       </div>
 
@@ -168,15 +169,14 @@
       </div>
 
       <div class="nav-row">
-        <button class="btn btn-secondary" onclick="startOver()">New Bill ↺</button>
+        <button class="btn btn-secondary" onclick="startOver()">New Receipt ↺</button>
         <button class="btn btn-primary" id="btnToPeople" onclick="goTo(2)">People →</button>
       </div>
     </section>
 
-
-    <!-- ===== VIEW 2: PEOPLE ===== -->
+    <!-- ===== VIEW 3: ADD PEOPLE ===== -->
     <section class="view" id="view-2">
-      <h2 class="section-title">Who's Eating?</h2>
+      <h2 class="section-title">Add People</h2>
       <p class="section-subtitle">Add everyone at the table.</p>
 
       <div class="card">
@@ -184,7 +184,7 @@
         <div class="people-list" id="peopleList">
           <div class="empty-state">
             <div class="emoji">👥</div>
-            No one added yet
+            No one added yet.
           </div>
         </div>
         <div class="add-person-row">
@@ -196,43 +196,43 @@
 
       <div class="nav-row">
         <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
-        <button class="btn btn-primary" id="btnToAssign" onclick="goTo(3)" disabled>Assign → (Add someone first)</button>
+        <button class="btn btn-primary" id="btnToAssign" onclick="goTo(3)">Assign →</button>
       </div>
     </section>
 
-    <!-- ===== VIEW 3: ASSIGN ===== -->
+    <!-- ===== VIEW 4: ASSIGN ITEMS TO PEOPLE ===== -->
     <section class="view" id="view-3">
-      <h2 class="section-title">Who Had What?</h2>
+      <h2 class="section-title">Assign Items To People</h2>
       <p class="section-subtitle">Tap names to assign each item. Items can be shared.</p>
 
       <!-- Per-person running totals (always visible in this view) -->
       <div class="running-totals" id="runningTotals"></div>
 
       <div class="assign-actions" style="display:flex; gap:10px; margin-bottom: 14px;">
-        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="splitAllEqually()">⚖️ Split All</button>
-        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="resetAssignments()">🔄 Reset</button>
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="splitAllEqually()">⚖️ Split All
+          Equally</button>
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="resetAssignments()">🔄 Reset
+          Assignments</button>
       </div>
 
       <div id="assignList"></div>
 
       <div class="nav-row">
         <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
-        <button class="btn btn-primary" id="btnToSummary" onclick="goTo(4)" disabled>Summary → (Assign all items first)</button>
+        <button class="btn btn-primary" id="btnToSummary" onclick="goTo(4)">Summary</button>
       </div>
     </section>
 
-    <!-- ===== VIEW 4: SUMMARY ===== -->
+    <!-- ===== VIEW 5: SUMMARY ===== -->
     <section class="view" id="view-4">
       <h2 class="section-title">Summary</h2>
       <p class="section-subtitle">Here's what everyone owes.</p>
 
       <div id="summaryContent"></div>
 
-
-
       <div class="nav-row">
         <button class="btn btn-secondary" style="flex:1" onclick="goTo(3)">← Back</button>
-        <button class="btn btn-primary" style="flex:1" onclick="startOver()">New Bill ↺</button>
+        <button class="btn btn-primary" style="flex:1" onclick="startOver()">New Receipt ↺</button>
       </div>
     </section>
   </div>
