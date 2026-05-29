@@ -9,14 +9,16 @@
   <meta name="description"
     content="Client-side web application for scanning restaurant receipts, detecting items, and easily splitting the receipt">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src blob:; connect-src 'self' data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net;">
+    content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net/npm/; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src blob:; connect-src 'self' data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net;">
   <title>BillSplitter</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js" integrity="sha384-1zP4ZOtlk2FXAOiUArpMuWf7INJJKe/ROfYFAVSeUa11DEfXdKWGiPI3dVma2Gt0" crossorigin="anonymous" defer></script>
-  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"
+    integrity="sha384-1zP4ZOtlk2FXAOiUArpMuWf7INJJKe/ROfYFAVSeUa11DEfXdKWGiPI3dVma2Gt0" crossorigin="anonymous"
+    defer></script>
+  <script src="script.js" defer></script>
 </head>
 
 <body>
@@ -142,7 +144,7 @@
         <div class="tip-row mt-10">
           <span class="tip-label">Custom:</span>
           <input type="number" id="tipAmount" min="0" step="0.01" placeholder="0.00" class="w-120px flex-none"
-             aria-label="Tip amount">
+            aria-label="Tip amount">
         </div>
       </div>
 
@@ -152,8 +154,8 @@
         <div class="tip-row mt-0">
           <span class="tip-label">Total on receipt:</span>
           <div class="flex-row-center">
-            <input type="number" id="receiptTotalInput" min="0" step="0.01" placeholder="0.00"
-              class="w-100px flex-none" aria-label="Receipt total">
+            <input type="number" id="receiptTotalInput" min="0" step="0.01" placeholder="0.00" class="w-100px flex-none"
+              aria-label="Receipt total">
             <button class="btn btn-secondary btn-sm" id="btnCopyTotal">Use Items Total</button>
           </div>
         </div>
@@ -190,8 +192,7 @@
           </div>
         </div>
         <div class="add-person-row">
-          <input type="text" id="personNameInput" placeholder="Name…" maxlength="30"
-             aria-label="Person name">
+          <input type="text" id="personNameInput" placeholder="Name…" maxlength="30" aria-label="Person name">
           <button class="btn btn-primary btn-sm" id="btnAddPerson">Add</button>
         </div>
       </div>
