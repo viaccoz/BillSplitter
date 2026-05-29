@@ -1,7 +1,6 @@
 /* ============================================================
-   BillSplitter — app.js
-   Pure client-side. State is serialized to base64url in the
-   URL hash for cross-device sharing.
+   BillSplitter — script.js
+   Pure client-side receipt scanner and bill splitting tool.
    ============================================================ */
 
 'use strict';
@@ -22,13 +21,6 @@ let ocrWorker = null;
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Try to load state from URL hash (shared link)
-    const hashView = loadStateFromHash();
-    if (hashView !== false) {
-        renderAll();
-        goTo(hashView); // jump straight to saved view if loaded from share link
-    }
-
     // File input listener
     document.getElementById('fileInput').addEventListener('change', onFileSelected);
 
@@ -146,7 +138,6 @@ function goTo(step) {
     if (step === 4) renderSummary();
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (currentView >= 1) saveStateToHash();
 }
 
 function updateStepIndicator() {
@@ -177,9 +168,9 @@ function handleFile(file) {
         img.classList.add('visible');
 
         // Hide upload zone and manual entry after selection
-        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('uploadZone').classList.add('hidden');
         const manualEntryRow = document.getElementById('manualEntryRow');
-        if (manualEntryRow) manualEntryRow.style.display = 'none';
+        if (manualEntryRow) manualEntryRow.classList.add('hidden');
 
         // Automatically start scanning the receipt
         runOCR();
@@ -325,9 +316,9 @@ function cleanName(s) {
 function parseItemsWithTags(text, ocrLines) {
     const tempTags = [];
 
-    const SKIP_RE = /\b(total|subtotal|tax|tva|mwst|vat|service charge|gratuity|change|cash|card|thank|welcome|table|tisch|date|time|receipt|invoice|order|espece|espèce|monnaie|rendu|pourboire|rounding|arrondi|incl\.|couvert|bon\b)\b/i;
+    const SKIP_RE = /\b(total|subtotal|tax(es)?|tva|mwst|vat|service charge|gratuity|change|cash|card(s)?|thank|welcome|table|tisch|date|time|receipt|invoice|order|espece(s)?|espèce(s)?|monnaie|rendu|pourboire|rounding|arrondi|incl\.|couvert|bon(s)?)\b/i;
     const DISCOUNT_RE = /\d+[.,]?\d*\s*%\s*(rabatt|remise|discount|reduction|offert|reduc)/i;
-    const PRICE_TOKEN_RE = /(?:^|[\s,;:£€$CHF])(\d{1,5}[.,]|\d{1,5}\s+)(\d{2})(?=\s|$|[^0-9])/g;
+    const PRICE_TOKEN_RE = /(?:^|[^\d])(\d{1,5}[., ]\d{2})(?=[^\d]|$)/g;
 
     // Sort OCR lines by y0 coordinate to guarantee correct physical top-to-bottom order on the receipt.
     // If they are on the same line (y0 difference < 5px), sort left-to-right (x0) to avoid overlapping.
@@ -357,7 +348,7 @@ function parseItemsWithTags(text, ocrLines) {
         let m;
         PRICE_TOKEN_RE.lastIndex = 0;
         while ((m = PRICE_TOKEN_RE.exec(lineText)) !== null) {
-            const rawNum = (m[1] + m[2]).replace(/[^0-9]/g, '');
+            const rawNum = m[1].replace(/[^0-9]/g, '');
             const val = parseFloat(rawNum.slice(0, -2) + '.' + rawNum.slice(-2));
             if (!isNaN(val) && val > 0 && val < 10000) {
                 prices.push({ val, index: m.index, raw: m[0] });
@@ -720,8 +711,8 @@ function renderItems() {
 }
 
 function renderItemsPlain() {
-    document.getElementById('reviewSplitPanel').style.display = 'none';
-    document.getElementById('reviewPlainPanel').style.display = '';
+    document.getElementById('reviewSplitPanel').classList.add('hidden');
+    document.getElementById('reviewPlainPanel').classList.remove('hidden');
     const list = document.getElementById('itemsList');
     if (state.items.length === 0) {
         list.innerHTML = '<div class="empty-state"><div class="emoji">🍽️</div>No items yet</div>';
@@ -753,8 +744,8 @@ function renderItemsPlain() {
 }
 
 function renderItemsSplit() {
-    document.getElementById('reviewSplitPanel').style.display = '';
-    document.getElementById('reviewPlainPanel').style.display = 'none';
+    document.getElementById('reviewSplitPanel').classList.remove('hidden');
+    document.getElementById('reviewPlainPanel').classList.add('hidden');
     const list = document.getElementById('reviewItemList');
     if (!list) return;
 
@@ -965,7 +956,7 @@ function updateTotals() {
     }
 
     updatePeopleButton();
-    saveStateToHash();
+
 }
 
 // ─── PEOPLE ───────────────────────────────────────────────────────────────────
@@ -1026,7 +1017,7 @@ function renderPeople() {
       <button class="btn btn-danger" data-action="removePerson" data-id="${p.id}" aria-label="Remove ${escHtml(p.name)}">✕</button>
     </div>
   `).join('');
-    saveStateToHash();
+
 }
 
 // goToAssign() removed — goTo(3) is called directly and goTo() already guards against 0 people.
@@ -1121,7 +1112,7 @@ function updateSummaryButton() {
         btn.disabled = hasUnassigned;
         btn.textContent = hasUnassigned ? 'Summary → (Assign all items first)' : 'Summary →';
     }
-    saveStateToHash();
+
 }
 
 // ─── RUNNING TOTALS ───────────────────────────────────────────────────────────
@@ -1238,84 +1229,7 @@ function renderSummary() {
 }
 
 
-function loadStateFromHash() {
-    const hash = location.hash;
-    if (!hash.startsWith('#data=')) return false;
-    try {
-        const b64 = hash.slice(6);
-        // Decode base64 → binary string → percent-encoded UTF-8 → JSON string
-        // (replaces deprecated escape() with explicit byte mapping)
-        const json = decodeURIComponent(
-            atob(b64).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join(''));
-        const payload = JSON.parse(json);
 
-        // Strict sanitization to prevent injections
-        const parsedItems = Array.isArray(payload.items) ? payload.items : [];
-        state.items = parsedItems.map(i => ({
-            id: String(i.id || '').replace(/[^a-zA-Z0-9_]/g, ''),
-            name: String(i.name || '').slice(0, 100),
-            price: Number(i.price) || 0,
-            disabled: !!i.disabled,
-            _ocrIdx: i._ocrIdx !== undefined ? Number(i._ocrIdx) : undefined
-        }));
-
-        const parsedPeople = Array.isArray(payload.people) ? payload.people : [];
-        state.people = parsedPeople.map(p => ({
-            id: String(p.id || '').replace(/[^a-zA-Z0-9_]/g, ''),
-            name: String(p.name || '').slice(0, 30)
-        }));
-
-        const parsedAssignments = payload.assignments && typeof payload.assignments === 'object' ? payload.assignments : {};
-        state.assignments = {};
-        for (const [itemId, personIds] of Object.entries(parsedAssignments)) {
-            const cleanItemId = String(itemId).replace(/[^a-zA-Z0-9_]/g, '');
-            if (Array.isArray(personIds)) {
-                state.assignments[cleanItemId] = personIds.map(pid => String(pid).replace(/[^a-zA-Z0-9_]/g, ''));
-            }
-        }
-
-        state.tip = Number(payload.tip) || 0;
-        state.receiptTotal = payload.receiptTotal != null && !isNaN(Number(payload.receiptTotal)) ? Number(payload.receiptTotal) : null;
-
-        // Restore ID counters so new items don't clash
-        state.items.forEach(i => {
-            const n = parseInt(i.id.replace('item_', '')) || 0;
-            if (n >= _itemIdCounter) _itemIdCounter = n + 1;
-        });
-        state.people.forEach(p => {
-            const n = parseInt(p.id.replace('person_', '')) || 0;
-            if (n >= _personIdCounter) _personIdCounter = n + 1;
-        });
-        return payload.step !== undefined ? Number(payload.step) : 4;
-    } catch (e) {
-        console.warn('Failed to load state from URL:', e);
-        return false;
-    }
-}
-
-let _saveHashTimeout = null;
-function saveStateToHash() {
-    clearTimeout(_saveHashTimeout);
-    _saveHashTimeout = setTimeout(() => {
-        try {
-            const minimalState = {
-                step: currentView,
-                items: state.items,
-                people: state.people,
-                assignments: state.assignments,
-                tip: state.tip,
-                receiptTotal: state.receiptTotal
-            };
-            const json = JSON.stringify(minimalState);
-            const b64 = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g,
-                (match, p1) => String.fromCharCode('0x' + p1)
-            ));
-            window.history.replaceState(null, '', '#data=' + b64);
-        } catch (e) {
-            console.error("Failed to save state to hash:", e);
-        }
-    }, 500);
-}
 
 
 
@@ -1351,8 +1265,7 @@ function startOver() {
         items: [], people: [], assignments: {}, tip: 0, receiptTotal: null,
         _ocrRaw: null, _ocrLines: [], _ocrTaggedLines: []
     };
-    clearTimeout(_saveHashTimeout);
-    history.replaceState(null, '', location.pathname);
+
     // Clear file input and preview image
     const fileInput = document.getElementById('fileInput');
     if (fileInput) fileInput.value = '';
@@ -1360,13 +1273,13 @@ function startOver() {
     if (previewImg) { previewImg.src = ''; previewImg.classList.remove('visible'); }
     // Restore upload zone visibility
     const uploadZone = document.getElementById('uploadZone');
-    if (uploadZone) uploadZone.style.display = 'block';
+    if (uploadZone) uploadZone.classList.remove('hidden');
     const manualEntryRow = document.getElementById('manualEntryRow');
-    if (manualEntryRow) manualEntryRow.style.display = 'flex';
+    if (manualEntryRow) manualEntryRow.classList.remove('hidden');
 
     // Hide scan button
     const btnScanEl = document.getElementById('btnScan');
-    if (btnScanEl) btnScanEl.style.display = 'none';
+    if (btnScanEl) btnScanEl.classList.add('hidden');
     // Reset OCR canvas
     window._receiptFile = null;
     _ocrMapImg = null;

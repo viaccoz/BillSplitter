@@ -14,7 +14,6 @@ Client-side web application for scanning restaurant receipts, detecting items, a
 
 ## TODO
 
-- Fix items detection
+- Improve items detection
 - Review all the files manually
-- Remove inline JavaScript
 - Restrict CSP for https://cdn.jsdelivr.net/npm/
