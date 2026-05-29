@@ -9,13 +9,13 @@
   <meta name="description"
     content="Client-side web application for scanning restaurant receipts, detecting items, and easily splitting the receipt">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src blob:; connect-src 'self' data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net;">
+    content="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src blob:; connect-src 'self' data: https://tessdata.projectnaptha.com https://cdn.jsdelivr.net;">
   <title>BillSplitter</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js" integrity="sha384-1zP4ZOtlk2FXAOiUArpMuWf7INJJKe/ROfYFAVSeUa11DEfXdKWGiPI3dVma2Gt0" crossorigin="anonymous" defer></script>
   <script src="app.js" defer></script>
 </head>
 
@@ -76,7 +76,7 @@
 
       <div class="ocr-progress" id="ocrProgress">
         <div class="spinner"></div>
-        <div class="ocr-status-wrapper" style="flex:1; display:flex; flex-direction:column; gap:4px">
+        <div class="ocr-status-wrapper flex-1 flex-col-gap4">
           <span class="ocr-status" id="ocrStatus">Initializing OCR…</span>
           <div class="progress-bar-container">
             <div class="progress-bar-fill" id="ocrProgressBarFill"></div>
@@ -86,14 +86,14 @@
 
       <img id="previewImg" class="preview-img" alt="Receipt preview">
 
-      <div class="nav-row" style="margin-top:20px">
-        <button class="btn btn-primary btn-full" id="btnScan" style="display:none" onclick="runOCR()">
+      <div class="nav-row mt-20">
+        <button class="btn btn-primary btn-full hidden" id="btnScan">
           🔍 Scan Receipt
         </button>
       </div>
 
       <div class="nav-row" id="manualEntryRow">
-        <button class="btn btn-secondary btn-full" onclick="skipToItems()">
+        <button class="btn btn-secondary btn-full" id="btnSkipToItems">
           ✏️ Enter Items Manually
         </button>
       </div>
@@ -105,14 +105,14 @@
       <p class="section-subtitle">Check the extracted items, edit prices or names, and add a tip.</p>
 
       <!-- Split view: image left (sticky) + editable rows right — shown when OCR was used -->
-      <div id="reviewSplitPanel" style="display:none">
+      <div id="reviewSplitPanel" class="hidden">
         <div class="review-split">
           <div class="review-canvas-wrap" id="reviewCanvasWrap">
             <canvas id="reviewCanvas"></canvas>
           </div>
           <div class="review-item-list" id="reviewItemList"></div>
         </div>
-        <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%" onclick="addItem()">+ Add
+        <button class="btn btn-secondary btn-sm mt-10 w-full" data-action="addItem">+ Add
           Item</button>
       </div>
 
@@ -121,7 +121,7 @@
         <div class="card">
           <div class="card-title">Receipt Items</div>
           <div id="itemsList"></div>
-          <button class="btn btn-secondary btn-sm" style="margin-top:14px" onclick="addItem()">+ Add Item</button>
+          <button class="btn btn-secondary btn-sm mt-14" data-action="addItem">+ Add Item</button>
         </div>
       </div>
 
@@ -130,49 +130,49 @@
         <div class="card-title">Tip</div>
         <div class="tip-row">
           <span class="tip-label">Quick:</span>
-          <div class="tip-pct-btns" style="flex-wrap: wrap;">
-            <button class="tip-pct-btn" onclick="setTipPct(0)" id="tip0">0%</button>
-            <button class="tip-pct-btn" onclick="setTipPct(5)" id="tip5">5%</button>
-            <button class="tip-pct-btn" onclick="setTipPct(10)" id="tip10">10%</button>
-            <button class="tip-pct-btn" onclick="setTipPct(15)" id="tip15">15%</button>
-            <button class="tip-pct-btn" onclick="setTipPct(20)" id="tip20">20%</button>
-            <button class="tip-pct-btn" onclick="setTipPct(25)" id="tip25">25%</button>
+          <div class="tip-pct-btns flex-wrap">
+            <button class="tip-pct-btn" data-pct="0" id="tip0">0%</button>
+            <button class="tip-pct-btn" data-pct="5" id="tip5">5%</button>
+            <button class="tip-pct-btn" data-pct="10" id="tip10">10%</button>
+            <button class="tip-pct-btn" data-pct="15" id="tip15">15%</button>
+            <button class="tip-pct-btn" data-pct="20" id="tip20">20%</button>
+            <button class="tip-pct-btn" data-pct="25" id="tip25">25%</button>
           </div>
         </div>
-        <div class="tip-row" style="margin-top:10px">
+        <div class="tip-row mt-10">
           <span class="tip-label">Custom:</span>
-          <input type="number" id="tipAmount" min="0" step="0.01" placeholder="0.00" style="width:120px; flex:none"
-            oninput="onTipInput()" aria-label="Tip amount">
+          <input type="number" id="tipAmount" min="0" step="0.01" placeholder="0.00" class="w-120px flex-none"
+             aria-label="Tip amount">
         </div>
       </div>
 
       <!-- RECEIPT TOTAL -->
       <div class="card">
         <div class="card-title">Receipt Total</div>
-        <div class="tip-row" style="margin-top:0">
+        <div class="tip-row mt-0">
           <span class="tip-label">Total on receipt:</span>
-          <div style="display:flex; gap:8px; align-items:center;">
+          <div class="flex-row-center">
             <input type="number" id="receiptTotalInput" min="0" step="0.01" placeholder="0.00"
-              style="width:100px; flex:none" oninput="onReceiptTotalInput()" aria-label="Receipt total">
-            <button class="btn btn-secondary btn-sm" onclick="copyTotalToReceipt()">Use Items Total</button>
+              class="w-100px flex-none" aria-label="Receipt total">
+            <button class="btn btn-secondary btn-sm" id="btnCopyTotal">Use Items Total</button>
           </div>
         </div>
-        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:8px">
+        <div class="text-hint mt-8">
           Enter the printed total to compare it against the items total.
         </div>
       </div>
 
       <!-- TOTALS -->
-      <div class="totals-bar" style="justify-content: flex-end;">
-        <div style="text-align:right">
+      <div class="totals-bar justify-end">
+        <div class="text-right">
           <div class="totals-label">Items total (incl. tip)</div>
           <div class="totals-value" id="totalDisplay">0.00</div>
         </div>
       </div>
 
       <div class="nav-row">
-        <button class="btn btn-secondary" onclick="startOver()">New Receipt ↺</button>
-        <button class="btn btn-primary" id="btnToPeople" onclick="goTo(2)">People →</button>
+        <button class="btn btn-secondary" data-action="startOver">New Receipt ↺</button>
+        <button class="btn btn-primary" id="btnToPeople" data-goto="2">People →</button>
       </div>
     </section>
 
@@ -191,14 +191,14 @@
         </div>
         <div class="add-person-row">
           <input type="text" id="personNameInput" placeholder="Name…" maxlength="30"
-            onkeydown="if(event.key==='Enter') addPerson()" aria-label="Person name">
-          <button class="btn btn-primary btn-sm" onclick="addPerson()">Add</button>
+             aria-label="Person name">
+          <button class="btn btn-primary btn-sm" id="btnAddPerson">Add</button>
         </div>
       </div>
 
       <div class="nav-row">
-        <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
-        <button class="btn btn-primary" id="btnToAssign" onclick="goTo(3)">Assign →</button>
+        <button class="btn btn-secondary" data-goto="1">← Back</button>
+        <button class="btn btn-primary" id="btnToAssign" data-goto="3">Assign →</button>
       </div>
     </section>
 
@@ -210,18 +210,18 @@
       <!-- Per-person running totals (always visible in this view) -->
       <div class="running-totals" id="runningTotals"></div>
 
-      <div class="assign-actions" style="display:flex; gap:10px; margin-bottom: 14px;">
-        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="splitAllEqually()">⚖️ Split All
+      <div class="assign-actions mb-14">
+        <button class="btn btn-secondary btn-sm flex-1" id="btnSplitAll">⚖️ Split All
           Equally</button>
-        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="resetAssignments()">🔄 Reset
+        <button class="btn btn-secondary btn-sm flex-1" id="btnResetAssignments">🔄 Reset
           Assignments</button>
       </div>
 
       <div id="assignList"></div>
 
       <div class="nav-row">
-        <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
-        <button class="btn btn-primary" id="btnToSummary" onclick="goTo(4)">Summary</button>
+        <button class="btn btn-secondary" data-goto="2">← Back</button>
+        <button class="btn btn-primary" id="btnToSummary" data-goto="4">Summary</button>
       </div>
     </section>
 
@@ -233,8 +233,8 @@
       <div id="summaryContent"></div>
 
       <div class="nav-row">
-        <button class="btn btn-secondary" style="flex:1" onclick="goTo(3)">← Back</button>
-        <button class="btn btn-primary" style="flex:1" onclick="startOver()">New Receipt ↺</button>
+        <button class="btn btn-secondary flex-1" data-goto="3">← Back</button>
+        <button class="btn btn-primary flex-1" data-action="startOver">New Receipt ↺</button>
       </div>
     </section>
   </div>

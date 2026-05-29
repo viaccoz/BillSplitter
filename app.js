@@ -42,6 +42,56 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith('image/')) handleFile(file);
     });
+
+    // Static event listeners
+    document.getElementById('btnScan')?.addEventListener('click', runOCR);
+    document.getElementById('btnSkipToItems')?.addEventListener('click', skipToItems);
+    document.getElementById('btnCopyTotal')?.addEventListener('click', copyTotalToReceipt);
+    document.getElementById('btnAddPerson')?.addEventListener('click', addPerson);
+    document.getElementById('btnSplitAll')?.addEventListener('click', splitAllEqually);
+    document.getElementById('btnResetAssignments')?.addEventListener('click', resetAssignments);
+    document.getElementById('tipAmount')?.addEventListener('input', onTipInput);
+    document.getElementById('receiptTotalInput')?.addEventListener('input', onReceiptTotalInput);
+    
+    document.getElementById('personNameInput')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') addPerson();
+    });
+
+    document.querySelectorAll('.tip-pct-btn').forEach(btn => {
+        btn.addEventListener('click', e => setTipPct(Number(e.target.dataset.pct)));
+    });
+
+    document.querySelectorAll('[data-goto]').forEach(btn => {
+        btn.addEventListener('click', e => goTo(Number(e.target.dataset.goto)));
+    });
+
+    // Event Delegation for dynamically rendered elements and common actions
+    document.body.addEventListener('click', e => {
+        const actionBtn = e.target.closest('[data-action]');
+        if (!actionBtn) return;
+        const action = actionBtn.dataset.action;
+        
+        if (action === 'toggleItem') toggleItemDisabled(actionBtn.dataset.id);
+        else if (action === 'removePerson') removePerson(actionBtn.dataset.id);
+        else if (action === 'toggleAssign') toggleAssign(actionBtn.dataset.item, actionBtn.dataset.person);
+        else if (action === 'startOver') startOver();
+        else if (action === 'addItem') addItem();
+    });
+
+    document.body.addEventListener('input', e => {
+        if (e.target.dataset.action === 'onNameInput') onNameInput(e.target, e.target.dataset.id);
+        else if (e.target.dataset.action === 'onPriceInput') onPriceInput(e.target, e.target.dataset.id);
+    });
+
+    document.body.addEventListener('mouseover', e => {
+        const row = e.target.closest('[data-hover]');
+        if (row && row.dataset.hover !== "undefined") reviewRowHover(Number(row.dataset.hover));
+    });
+
+    document.body.addEventListener('mouseout', e => {
+        const row = e.target.closest('[data-hover]');
+        if (row) reviewRowHoverEnd();
+    });
 });
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -684,18 +734,18 @@ function renderItemsPlain() {
         <div class="item-row-label">Item name</div>
         <input type="text" class="item-name-input" placeholder="e.g. Margherita Pizza"
                value="${escHtml(item.name)}" aria-label="Item name"
-               oninput="onNameInput(this, '${item.id}')">
+               data-action="onNameInput" data-id="${item.id}">
       </div>
       <div class="item-row-bottom">
-        <div style="flex:1">
+        <div class="flex-1">
           <div class="item-row-label">Price</div>
           <input type="number" class="item-price-input" placeholder="0.00"
                  value="${item.price > 0 ? item.price.toFixed(2) : ''}"
                  min="0" step="0.01" aria-label="Item price"
-                 oninput="onPriceInput(this, '${item.id}')">
+                 data-action="onPriceInput" data-id="${item.id}">
         </div>
-        <button class="btn-toggle${item.disabled ? ' disabled-state' : ''}" style="margin-top:18px"
-                onclick="toggleItemDisabled('${item.id}')" aria-label="Toggle item">${item.disabled ? '🚫' : '👁'}</button>
+        <button class="btn-toggle${item.disabled ? ' disabled-state' : ''} mt-14"
+                data-action="toggleItem" data-id="${item.id}" aria-label="Toggle item">${item.disabled ? '🚫' : '👁'}</button>
       </div>
     </div>
   `).join('');
@@ -721,23 +771,22 @@ function renderItemsSplit() {
         const disabledCls = item.disabled ? ' item-disabled' : '';
         return `
         <div class="review-item-row${hasBbox}${disabledCls}" data-id="${item.id}" data-ocr-idx="${ocrIdx}"
-             onmouseenter="reviewRowHover(${ocrIdx})"
-             onmouseleave="reviewRowHoverEnd()">
+             data-hover="${ocrIdx}">
           <div class="review-item-fields">
             <div class="item-row-label">Item name</div>
             <input type="text" class="item-name-input" placeholder="e.g. Margherita Pizza"
                    value="${escHtml(item.name)}" aria-label="Item name"
-                   oninput="onNameInput(this, '${item.id}')">
+                   data-action="onNameInput" data-id="${item.id}">
             <div class="review-item-row-bottom">
-              <div style="flex:1">
+              <div class="flex-1">
                 <div class="item-row-label">Price</div>
                 <input type="number" class="item-price-input" placeholder="0.00"
                        value="${item.price > 0 ? item.price.toFixed(2) : ''}"
                        min="0" step="0.01" aria-label="Item price"
-                       oninput="onPriceInput(this, '${item.id}')">
+                       data-action="onPriceInput" data-id="${item.id}">
               </div>
-              <button class="btn-toggle${item.disabled ? ' disabled-state' : ''}" style="margin-top:16px"
-                      onclick="toggleItemDisabled('${item.id}')" aria-label="Toggle item">${item.disabled ? '🚫' : '👁'}</button>
+              <button class="btn-toggle${item.disabled ? ' disabled-state' : ''} mt-14"
+                      data-action="toggleItem" data-id="${item.id}" aria-label="Toggle item">${item.disabled ? '🚫' : '👁'}</button>
             </div>
           </div>
         </div>`;
@@ -974,7 +1023,7 @@ function renderPeople() {
     <div class="person-chip">
       <div class="person-avatar ${personColor(i)}">${personInitial(p.name)}</div>
       <span class="person-name">${escHtml(p.name)}</span>
-      <button class="btn btn-danger" onclick="removePerson('${p.id}')" aria-label="Remove ${escHtml(p.name)}">✕</button>
+      <button class="btn btn-danger" data-action="removePerson" data-id="${p.id}" aria-label="Remove ${escHtml(p.name)}">✕</button>
     </div>
   `).join('');
     saveStateToHash();
@@ -1049,10 +1098,10 @@ function renderAssignPeopleHTML(itemId) {
         const sel = assigned.includes(p.id);
         return `
       <button class="assign-person-btn ${sel ? 'selected' : ''}"
-              onclick="toggleAssign('${itemId}', '${p.id}')"
+              data-action="toggleAssign" data-item="${itemId}" data-person="${p.id}"
               aria-pressed="${sel}"
               aria-label="${escHtml(p.name)}">
-        <span class="person-avatar ${personColor(i)}" style="width:24px;height:24px;font-size:0.7rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700">
+        <span class="person-avatar ${personColor(i)} avatar-sm">
           ${personInitial(p.name)}
         </span>
         ${escHtml(p.name)}
@@ -1150,7 +1199,7 @@ function renderSummary() {
     <div class="grand-total-card">
       <div class="grand-total-label">Grand Total</div>
       <div class="grand-total-amount">${fmtPrice(grandTotal)}</div>
-      ${state.tip > 0 ? `<div style="font-size:0.8rem;opacity:0.75;margin-top:4px">incl. ${fmtPrice(state.tip)} tip</div>` : ''}
+      ${state.tip > 0 ? `<div class="text-sub-hint">incl. ${fmtPrice(state.tip)} tip</div>` : ''}
     </div>
   `;
 
@@ -1168,7 +1217,7 @@ function renderSummary() {
           <span class="summary-person-name">${escHtml(p.name)}</span>
           <span class="summary-person-total">${fmtPrice(total)}</span>
         </div>
-        ${items.length === 0 ? '<div style="font-size:0.85rem;color:var(--text-muted)">No items assigned</div>' : ''}
+        ${items.length === 0 ? '<div class="text-empty">No items assigned</div>' : ''}
         ${items.map(({ item, share, splitCount }) => `
           <div class="summary-item-line">
             <span>${escHtml(item.name || 'Unnamed')}${splitCount > 1 ? `<span class="split-note">÷${splitCount}</span>` : ''}</span>
@@ -1176,7 +1225,7 @@ function renderSummary() {
           </div>
         `).join('')}
         ${state.tip > 0 && tipShare > 0.001 ? `
-          <div class="summary-item-line" style="color:var(--text-muted);font-style:italic">
+          <div class="summary-item-line text-italic">
             <span>Tip (proportional)</span>
             <span>${fmtPrice(tipShare)}</span>
           </div>

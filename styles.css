@@ -324,6 +324,7 @@ body::after {
   border-radius: 3px;
   transition: width 0.2s ease-out;
 }
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -453,8 +454,15 @@ input[type="text"]::placeholder {
 
 /* Remove number input spinners */
 input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 
 /* ===== ITEM ROWS ===== */
 .item-row {
@@ -986,8 +994,14 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   scroll-behavior: smooth;
 }
 
-.review-canvas-wrap::-webkit-scrollbar { width: 4px; }
-.review-canvas-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.review-canvas-wrap::-webkit-scrollbar {
+  width: 4px;
+}
+
+.review-canvas-wrap::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
 
 .review-canvas-wrap canvas {
   display: block;
@@ -999,7 +1013,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   overflow: visible;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   display: flex;
   flex-direction: column;
 }
@@ -1009,20 +1023,24 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   cursor: default;
   transition: background 0.15s ease;
   border-left: 3px solid transparent;
 }
 
-.review-item-row:last-child { border-bottom: none; }
+.review-item-row:last-child {
+  border-bottom: none;
+}
 
 .review-item-row.hovered {
   background: rgba(124, 58, 237, 0.07);
   border-left-color: #7c3aed;
 }
 
-.review-item-row.no-bbox { opacity: 0.7; }
+.review-item-row.no-bbox {
+  opacity: 0.7;
+}
 
 /* Fields take remaining width */
 .review-item-fields {
@@ -1060,17 +1078,20 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .item-row.item-disabled,
 .review-item-row.item-disabled {
   opacity: 0.38;
-  pointer-events: none;   /* block hover/focus inside */
+  pointer-events: none;
+  /* block hover/focus inside */
 }
+
 .item-row.item-disabled .btn-toggle,
 .review-item-row.item-disabled .btn-toggle {
-  pointer-events: all;    /* but keep the toggle clickable */
+  pointer-events: all;
+  /* but keep the toggle clickable */
 }
 
 /* Toggle (disable) button */
 .btn-toggle {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: var(--text-muted);
   border-radius: 8px;
   padding: 6px 10px;
@@ -1080,13 +1101,15 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   transition: background var(--transition), color var(--transition);
   line-height: 1;
 }
+
 .btn-toggle:hover {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
   color: var(--text);
 }
+
 .btn-toggle.disabled-state {
   color: var(--danger);
-  border-color: rgba(244,63,94,0.3);
+  border-color: rgba(244, 63, 94, 0.3);
 }
 
 /* Total mismatch warning in view-1 */
@@ -1103,16 +1126,19 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   align-items: center;
   flex-wrap: wrap;
 }
+
 .total-mismatch-warning.visible {
   display: flex;
 }
+
 .total-mismatch-warning .mismatch-msg {
   flex: 1;
   min-width: 180px;
 }
+
 .total-mismatch-warning .btn-proceed {
-  background: rgba(244,63,94,0.18);
-  border: 1px solid rgba(244,63,94,0.4);
+  background: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.4);
   color: #fda4af;
   border-radius: 8px;
   padding: 7px 14px;
@@ -1122,14 +1148,16 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   white-space: nowrap;
   transition: background var(--transition);
 }
+
 .total-mismatch-warning .btn-proceed:hover {
-  background: rgba(244,63,94,0.30);
+  background: rgba(244, 63, 94, 0.30);
 }
 
 /* Assign screen — disable-toggle on cards */
 .assign-item-card {
   position: relative;
 }
+
 .assign-disable-btn {
   position: absolute;
   top: 10px;
@@ -1144,4 +1172,32 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   border-radius: 6px;
   transition: color var(--transition);
 }
-.assign-disable-btn:hover { color: var(--danger); }
+
+.assign-disable-btn:hover {
+  color: var(--danger);
+}
+
+/* UTILITIES FOR CSP HARDENING */
+.hidden { display: none !important; }
+.mt-0 { margin-top: 0 !important; }
+.mt-8 { margin-top: 8px !important; }
+.mt-10 { margin-top: 10px !important; }
+.mt-14 { margin-top: 14px !important; }
+.mt-20 { margin-top: 20px !important; }
+.mb-14 { margin-bottom: 14px !important; }
+.flex-1 { flex: 1 !important; }
+.flex-none { flex: none !important; }
+.w-full { width: 100% !important; }
+.w-100px { width: 100px !important; }
+.w-120px { width: 120px !important; }
+.flex-row-center { display: flex; gap: 8px; align-items: center; }
+.flex-col-gap4 { display: flex; flex-direction: column; gap: 4px; }
+.flex-wrap { flex-wrap: wrap !important; }
+.justify-end { justify-content: flex-end !important; }
+.text-right { text-align: right !important; }
+.text-hint { font-size: 0.78rem; color: var(--text-muted); }
+.assign-actions { display: flex; gap: 10px; }
+.avatar-sm { width: 24px !important; height: 24px !important; font-size: 0.7rem !important; display: inline-flex !important; align-items: center; justify-content: center; font-weight: 700; border-radius: 50%; }
+.text-sub-hint { font-size: 0.8rem; opacity: 0.75; margin-top: 4px; }
+.text-empty { font-size: 0.85rem; color: var(--text-muted); }
+.text-italic { color: var(--text-muted) !important; font-style: italic !important; }
