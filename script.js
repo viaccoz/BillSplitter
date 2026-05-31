@@ -1,12 +1,7 @@
-/* ============================================================
-   BillSplitter — script.js
-   Pure client-side receipt scanner and bill splitting tool.
-   ============================================================ */
-
 'use strict';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-
+// TODO: Remove the state if it is not needed.
 let state = {
     items: [],          // [{ id, name, price }]
     people: [],         // [{ id, name }]
@@ -115,6 +110,7 @@ function updatePeopleButton() {
 }
 
 function goTo(step) {
+// TODO: Is this validation needed?
     // Validate before leaving step 2 (people)
     if (step > 2 && currentView === 2) {
         if (state.people.length === 0) {
@@ -294,15 +290,13 @@ function skipToItems() {
 // ─── ITEM PARSING ─────────────────────────────────────────────────────────────
 
 function cleanName(s) {
-    // Remove leading quantity: "1 ", "2 ", "1x ", "2.00 ", "2,00x ", etc.
-    s = s.replace(/^\d+([.,]\d+)?\s*[xX]?\s+/, '');
+// TODO: Isn't it possible to use the same list as tessedit_char_whitelist?
     // Remove leading/trailing OCR noise (non-word chars that aren't accented letters)
     s = s.replace(/^[^\w\u00C0-\u024F]+/, '').replace(/[^\w\u00C0-\u024F.]+$/, '');
     // Collapse internal whitespace
     s = s.replace(/\s+/g, ' ').trim();
     return s;
 }
-
 
 // ─── OCR VISUAL MAP ───────────────────────────────────────────────────────────
 
@@ -541,7 +535,7 @@ function parseItemsWithTags(text, ocrLines) {
     }
 
     // ── Detect the printed receipt total ──────────────────────────────────────
-    const TOTAL_LABEL_RE = /\b(total|montant|amount\s*due|amount\s*payable|grand\s*total|net\s*total|sub\s*total|balance\s*due|to\s*pay|a\s*payer|à\s*payer|ttc|t\.t\.c|toaal|totaal|gesamt|gesamtbetrag|summe|betrag|espece|espèce|especes|espèces|cash|encaissement|enlevé|montant\s*total|total\s*ttc|total\s*tva|total\s*a\s*payer)\b/i;
+    const TOTAL_LABEL_RE = /\b(total|montant|amount\s*due|amount\s*payable|grand\s*total|net\s*total|balance\s*due|to\s*pay|a\s*payer|à\s*payer|gesamt|gesamtbetrag|summe|betrag|montant\s*total|total\s*ttc|total\s*a\s*payer)\b/i;
     let detectedTotal = null;
     const candidates = [];
 
@@ -565,6 +559,7 @@ function parseItemsWithTags(text, ocrLines) {
     // Sort candidates by position (bottom-most first)
     candidates.sort((a, b) => b.tagIdx - a.tagIdx);
 
+// TODO: Simplify it by removing the fact to try to match the total.
     // DP subset sum to find largest subset matching a candidate exactly
     function findBestSubset(items, target) {
         const targetCents = Math.round(target * 100);
@@ -668,10 +663,6 @@ const OCR_COLORS = {
     item: '#10b981'
 };
 
-
-
-
-
 // ─── ITEM MANAGEMENT ──────────────────────────────────────────────────────────
 
 let _itemIdCounter = 1;
@@ -688,7 +679,6 @@ function addItem() {
         if (inputs.length) inputs[inputs.length - 1].focus();
     }, 50);
 }
-
 
 function toggleItemDisabled(id) {
     const item = state.items.find(i => i.id === id);
@@ -854,7 +844,6 @@ function reviewRowHoverEnd() {
     renderReviewCanvas(-1);
 }
 
-
 function onNameInput(input, itemId) {
     // Update state in-place without re-rendering (preserves focus)
     const item = state.items.find(i => i.id === itemId);
@@ -866,7 +855,6 @@ function onPriceInput(input, itemId) {
     if (item) item.price = parseFloat(input.value) || 0;
     updateTotals();
 }
-
 
 // ─── TIP ──────────────────────────────────────────────────────────────────────
 
@@ -905,7 +893,6 @@ function copyTotalToReceipt() {
 function getSubtotal() {
     return state.items.filter(i => !i.disabled).reduce((s, i) => s + (i.price || 0), 0);
 }
-
 
 function getAssignedSubtotal() {
     // Sum of prices of items that have at least one person assigned (tip excluded).
@@ -1077,7 +1064,6 @@ function renderAssign() {
     updateSummaryButton();
 }
 
-
 function renderAssignItem(itemId) {
     const container = document.getElementById(`assign-people-${itemId}`);
     if (container) container.innerHTML = renderAssignPeopleHTML(itemId);
@@ -1228,11 +1214,6 @@ function renderSummary() {
     document.getElementById('summaryContent').innerHTML = html;
 }
 
-
-
-
-
-
 // ─── MISC ─────────────────────────────────────────────────────────────────────
 
 function renderAll() {
@@ -1245,6 +1226,7 @@ function renderAll() {
 
         const sub = getSubtotal();
         if (sub > 0) {
+// TODO: Why is the tip definition present at several places (at least 3)?
             const pct = Math.round((state.tip / sub) * 100);
             if ([0, 5, 10, 15, 20, 25].includes(pct)) {
                 document.getElementById(`tip${pct}`)?.classList.add('active');
@@ -1294,6 +1276,7 @@ function startOver() {
     goTo(0);
 }
 
+// TODO: Aren't there some JavaScript built-in functions to do this?
 function escHtml(str) {
     return String(str)
         .replace(/&/g, '&amp;')
