@@ -11,7 +11,6 @@ let state = {
 
 let currentView = 0;
 let ocrWorker = null;
-// TODO: Why is it present several times?
 const TIP_PERCENTAGES = [0, 5, 10, 15, 20, 25];
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
@@ -44,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('personNameInput')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') addPerson();
     });
+
+    // Render and bind quick tip buttons dynamically
+    const tipContainer = document.getElementById('tipPctBtns');
+    if (tipContainer) {
+        tipContainer.innerHTML = TIP_PERCENTAGES.map(pct => 
+            `<button class="tip-pct-btn" data-pct="${pct}" id="tip${pct}">${pct}%</button>`
+        ).join('');
+    }
 
     document.querySelectorAll('.tip-pct-btn').forEach(btn => {
         btn.addEventListener('click', e => setTipPct(Number(e.target.dataset.pct)));
@@ -110,14 +117,40 @@ function updatePeopleButton() {
     btnToPeople.textContent = 'People →';
 }
 
-function goTo(step) {
-// TODO: Why for this step and not for the other ones?
-    // Keep safeguard validation to prevent navigating past step 2 if no people are added
-    if (step > 2 && currentView === 2) {
-        if (state.people.length === 0) {
-            return; // Blocked by UI button disabled state, but keep safeguard
+function canGoTo(step) {
+    if (step > currentView) {
+        // Can't go past Review Items (1) if no active items exist
+        if (step >= 2) {
+            const activeItems = state.items.filter(i => !i.disabled);
+            if (activeItems.length === 0) return false;
+
+            // Can't go past Review Items (1) if receipt total is mismatching
+            if (state.receiptTotal != null) {
+                const subtotal = getSubtotal();
+                const totalWithTip = subtotal + state.tip;
+                if (Math.abs(totalWithTip - state.receiptTotal) >= 0.01) {
+                    return false;
+                }
+            }
+        }
+
+        // Can't go past People (2) if no people are added
+        if (step >= 3 && state.people.length === 0) return false;
+
+        // Can't go past Assign Items (3) if there are unassigned items
+        if (step >= 4) {
+            const hasUnassigned = state.items.filter(i => !i.disabled).some(item => {
+                const a = state.assignments[item.id];
+                return !a || a.length === 0;
+            });
+            if (hasUnassigned) return false;
         }
     }
+    return true;
+}
+
+function goTo(step) {
+    if (!canGoTo(step)) return;
 
     document.getElementById(`view-${currentView}`).classList.remove('active');
     currentView = step;
@@ -289,13 +322,9 @@ function skipToItems() {
 // ─── ITEM PARSING ─────────────────────────────────────────────────────────────
 
 function cleanName(s) {
-// TODO: Isn't possible to merge the two?
     // Note: tessedit_char_whitelist restricts what characters Tesseract can recognize, whereas cleanName strips trailing/leading noise characters specifically from parsed item names.
-    // Remove leading/trailing OCR noise (non-word chars that aren't accented letters)
-    s = s.replace(/^[^\w\u00C0-\u024F]+/, '').replace(/[^\w\u00C0-\u024F.]+$/, '');
-    // Collapse internal whitespace
-    s = s.replace(/\s+/g, ' ').trim();
-    return s;
+    // Remove leading/trailing OCR noise (non-word/accent chars) and collapse internal whitespace
+    return s.replace(/^[^\w\u00C0-\u024F]+|[^\w\u00C0-\u024F.]+$/g, '').replace(/\s+/g, ' ').trim();
 }
 
 // ─── OCR VISUAL MAP ───────────────────────────────────────────────────────────

@@ -1176,28 +1176,3 @@ input[type="number"] {
 .assign-disable-btn:hover {
   color: var(--danger);
 }
-
-/* UTILITIES FOR CSP HARDENING */
-.hidden { display: none !important; }
-.mt-0 { margin-top: 0 !important; }
-.mt-8 { margin-top: 8px !important; }
-.mt-10 { margin-top: 10px !important; }
-.mt-14 { margin-top: 14px !important; }
-.mt-20 { margin-top: 20px !important; }
-.mb-14 { margin-bottom: 14px !important; }
-.flex-1 { flex: 1 !important; }
-.flex-none { flex: none !important; }
-.w-full { width: 100% !important; }
-.w-100px { width: 100px !important; }
-.w-120px { width: 120px !important; }
-.flex-row-center { display: flex; gap: 8px; align-items: center; }
-.flex-col-gap4 { display: flex; flex-direction: column; gap: 4px; }
-.flex-wrap { flex-wrap: wrap !important; }
-.justify-end { justify-content: flex-end !important; }
-.text-right { text-align: right !important; }
-.text-hint { font-size: 0.78rem; color: var(--text-muted); }
-.assign-actions { display: flex; gap: 10px; }
-.avatar-sm { width: 24px !important; height: 24px !important; font-size: 0.7rem !important; display: inline-flex !important; align-items: center; justify-content: center; font-weight: 700; border-radius: 50%; }
-.text-sub-hint { font-size: 0.8rem; opacity: 0.75; margin-top: 4px; }
-.text-empty { font-size: 0.85rem; color: var(--text-muted); }
-.text-italic { color: var(--text-muted) !important; font-style: italic !important; }
