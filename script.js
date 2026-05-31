@@ -12,6 +12,8 @@ let state = {
 let currentView = 0;
 let ocrWorker = null;
 const TIP_PERCENTAGES = [0, 5, 10, 15, 20, 25];
+const BASE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzàâäéèêëîïôùûüçÀÂÉÈÊÎÏÔÙÛÜÇ0123456789';
+const PUNCTUATION_CHARS = " .,%-/\\\\':";
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render and bind quick tip buttons dynamically
     const tipContainer = document.getElementById('tipPctBtns');
     if (tipContainer) {
-        tipContainer.innerHTML = TIP_PERCENTAGES.map(pct => 
+        tipContainer.innerHTML = TIP_PERCENTAGES.map(pct =>
             `<button class="tip-pct-btn" data-pct="${pct}" id="tip${pct}">${pct}%</button>`
         ).join('');
     }
@@ -245,7 +247,7 @@ async function runOCR() {
         await ocrWorker.setParameters({
             tessedit_pageseg_mode: '6',
             // Allow digits, letters, common punctuation found on receipts
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzàâäéèêëîïôùûüçÀÂÉÈÊÎÏÔÙÛÜÇ 0123456789.,%-/\':',
+            tessedit_char_whitelist: BASE_CHARS + PUNCTUATION_CHARS,
         });
 
         status.textContent = 'Extracting text…';
@@ -324,7 +326,8 @@ function skipToItems() {
 function cleanName(s) {
     // Note: tessedit_char_whitelist restricts what characters Tesseract can recognize, whereas cleanName strips trailing/leading noise characters specifically from parsed item names.
     // Remove leading/trailing OCR noise (non-word/accent chars) and collapse internal whitespace
-    return s.replace(/^[^\w\u00C0-\u024F]+|[^\w\u00C0-\u024F.]+$/g, '').replace(/\s+/g, ' ').trim();
+    const cleanRe = new RegExp(`^[^${BASE_CHARS}]+$`, 'g');
+    return s.replace(cleanRe, '').replace(/\s+/g, ' ').trim();
 }
 
 // ─── OCR VISUAL MAP ───────────────────────────────────────────────────────────
