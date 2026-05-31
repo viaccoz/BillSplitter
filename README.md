@@ -5,7 +5,7 @@ Client-side web application for scanning restaurant receipts, detecting items, a
 ## Features
 
 - Client-side OCR parsing: Powered by [Tesseract.js](https://tesseract.projectnaptha.com/), receipts are processed entirely within the browser. No images or financial data are ever uploaded to a server.
-- Smart total detection: Uses a dynamic programming subset-sum algorithm to intelligently match the parsed item prices against the total on the receipt, filtering out noise, taxes, and change.
+- Smart total detection: Intelligently detects the printed receipt total using key-phrase matching (e.g. "Total", "Montant", "Summe") to isolate items and automatically filter out subsequent receipt noise (such as taxes, tip, payments, or change).
 - Visual mapping: The OCR engine maps extracted text bounding boxes back to the original image canvas, allowing users to visually cross-reference items.
 - Dynamic assignment: Easily split individual items between multiple people, or split all items equally with a single click. 
 - Auto-calculated tips: Instantly add quick-percentage tips or custom amounts. Tips are automatically distributed proportionally based on each person's share of the base subtotal.

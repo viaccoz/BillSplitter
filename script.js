@@ -1,9 +1,6 @@
-// TODO: Analyze the code for possible injections.
-
 'use strict';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-// TODO: Remove the state if it is not needed.
 let state = {
     items: [],          // [{ id, name, price }]
     people: [],         // [{ id, name }]
@@ -14,6 +11,8 @@ let state = {
 
 let currentView = 0;
 let ocrWorker = null;
+// TODO: Why is it present several times?
+const TIP_PERCENTAGES = [0, 5, 10, 15, 20, 25];
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 
@@ -112,8 +111,8 @@ function updatePeopleButton() {
 }
 
 function goTo(step) {
-// TODO: Is this validation needed?
-    // Validate before leaving step 2 (people)
+// TODO: Why for this step and not for the other ones?
+    // Keep safeguard validation to prevent navigating past step 2 if no people are added
     if (step > 2 && currentView === 2) {
         if (state.people.length === 0) {
             return; // Blocked by UI button disabled state, but keep safeguard
@@ -166,9 +165,9 @@ function handleFile(file) {
         img.classList.add('visible');
 
         // Hide upload zone and manual entry after selection
-        document.getElementById('uploadZone').classList.add('hidden');
+        document.getElementById('uploadZone').style.display = 'none';
         const manualEntryRow = document.getElementById('manualEntryRow');
-        if (manualEntryRow) manualEntryRow.classList.add('hidden');
+        if (manualEntryRow) manualEntryRow.style.display = 'none';
 
         // Automatically start scanning the receipt
         runOCR();
@@ -222,8 +221,6 @@ async function runOCR() {
         // Store raw OCR text + line bounding boxes for visual map
         state._ocrRaw = data.text;
         state._ocrLines = data.lines || [];
-        console.log('[OCR raw output]\n', data.text);
-        console.log('[OCR lines with bbox]', data.lines);
 
         status.textContent = 'Parsing items…';
         const { parsed, taggedLines, detectedTotal } = parseItemsWithTags(data.text, data.lines);
@@ -292,7 +289,8 @@ function skipToItems() {
 // ─── ITEM PARSING ─────────────────────────────────────────────────────────────
 
 function cleanName(s) {
-// TODO: Isn't it possible to use the same list as tessedit_char_whitelist?
+// TODO: Isn't possible to merge the two?
+    // Note: tessedit_char_whitelist restricts what characters Tesseract can recognize, whereas cleanName strips trailing/leading noise characters specifically from parsed item names.
     // Remove leading/trailing OCR noise (non-word chars that aren't accented letters)
     s = s.replace(/^[^\w\u00C0-\u024F]+/, '').replace(/[^\w\u00C0-\u024F.]+$/, '');
     // Collapse internal whitespace
@@ -561,76 +559,12 @@ function parseItemsWithTags(text, ocrLines) {
     // Sort candidates by position (bottom-most first)
     candidates.sort((a, b) => b.tagIdx - a.tagIdx);
 
-// TODO: Simplify it by removing the fact to try to match the total.
-    // DP subset sum to find largest subset matching a candidate exactly
-    function findBestSubset(items, target) {
-        const targetCents = Math.round(target * 100);
-        const itemCents = items.map(i => Math.round(i.parsedPrice * 100));
-        const N = items.length;
+    if (candidates.length > 0) {
+        const topCandidate = candidates[0]; // bottom-most on receipt
+        detectedTotal = topCandidate.val;
 
-        // Safety bound: target up to 10,000.00
-        if (targetCents > 1000000 || targetCents <= 0 || N === 0) return null;
-
-        const dp = new Int32Array(targetCents + 1).fill(-1);
-        dp[0] = 0;
-        const choices = Array.from({ length: N }, () => new Uint8Array(targetCents + 1));
-
-        for (let i = 0; i < N; i++) {
-            const coin = itemCents[i];
-            if (coin <= 0) continue;
-            for (let w = targetCents; w >= coin; w--) {
-                if (dp[w - coin] !== -1) {
-                    if (dp[w - coin] + 1 > dp[w]) {
-                        dp[w] = dp[w - coin] + 1;
-                        choices[i][w] = 1;
-                    }
-                }
-            }
-        }
-
-        if (dp[targetCents] === -1) return null;
-
-        const subset = new Set();
-        let w = targetCents;
-        for (let i = N - 1; i >= 0; i--) {
-            if (choices[i][w]) {
-                subset.add(i);
-                w -= itemCents[i];
-            }
-        }
-        return subset;
-    }
-
-    let bestSubsetResult = null;
-
-    // 1. Try to find a candidate that equals a subset sum of PREVIOUS items
-    for (const cand of candidates) {
-        // Only consider items parsed BEFORE this candidate's line
-        const validItemTags = tempTags.filter((t, i) => i < cand.tagIdx && t.type === 'item' && !t.ignored && t.parsedPrice > 0);
-
-        const subset = findBestSubset(validItemTags, cand.val);
-        if (subset) {
-            detectedTotal = cand.val;
-            bestSubsetResult = { validItemTags, subset, candTagIdx: cand.tagIdx };
-            break; // found the bottom-most total that matches a subset of previous items!
-        }
-    }
-
-    // 2. Fallback: if no subset sums match, just take the bottom-most candidate
-    if (detectedTotal === null && candidates.length > 0) {
-        detectedTotal = candidates[0].val;
-    }
-
-    // 3. Ignore pertinent filter: if we found a valid subset, ignore other items
-    if (bestSubsetResult) {
-        // Ignore items before the total that aren't in the subset
-        for (let i = 0; i < bestSubsetResult.validItemTags.length; i++) {
-            if (!bestSubsetResult.subset.has(i)) {
-                bestSubsetResult.validItemTags[i].ignored = true;
-            }
-        }
-        // Also ignore any items that appear AFTER the accepted total
-        for (let i = bestSubsetResult.candTagIdx + 1; i < tempTags.length; i++) {
+        // Ignore any items that appear AFTER the accepted total (e.g. taxes, tip, payments, footer noise)
+        for (let i = topCandidate.tagIdx + 1; i < tempTags.length; i++) {
             if (tempTags[i].type === 'item') {
                 tempTags[i].ignored = true;
             }
@@ -703,8 +637,8 @@ function renderItems() {
 }
 
 function renderItemsPlain() {
-    document.getElementById('reviewSplitPanel').classList.add('hidden');
-    document.getElementById('reviewPlainPanel').classList.remove('hidden');
+    document.getElementById('reviewSplitPanel').style.display = 'none';
+    document.getElementById('reviewPlainPanel').style.display = '';
     const list = document.getElementById('itemsList');
     if (state.items.length === 0) {
         list.innerHTML = '<div class="empty-state"><div class="emoji">🍽️</div>No items yet</div>';
@@ -720,14 +654,14 @@ function renderItemsPlain() {
                data-action="onNameInput" data-id="${item.id}">
       </div>
       <div class="item-row-bottom">
-        <div class="flex-1">
+        <div style="flex: 1;">
           <div class="item-row-label">Price</div>
           <input type="number" class="item-price-input" placeholder="0.00"
                  value="${item.price > 0 ? item.price.toFixed(2) : ''}"
                  min="0" step="0.01" aria-label="Item price"
                  data-action="onPriceInput" data-id="${item.id}">
         </div>
-        <button class="btn-toggle${item.disabled ? ' disabled-state' : ''} mt-14"
+        <button class="btn-toggle${item.disabled ? ' disabled-state' : ''}" style="margin-top: 14px;"
                 data-action="toggleItem" data-id="${item.id}" aria-label="Toggle item">${item.disabled ? '🚫' : '👁'}</button>
       </div>
     </div>
@@ -736,8 +670,8 @@ function renderItemsPlain() {
 }
 
 function renderItemsSplit() {
-    document.getElementById('reviewSplitPanel').classList.remove('hidden');
-    document.getElementById('reviewPlainPanel').classList.add('hidden');
+    document.getElementById('reviewSplitPanel').style.display = '';
+    document.getElementById('reviewPlainPanel').style.display = 'none';
     const list = document.getElementById('reviewItemList');
     if (!list) return;
 
@@ -761,14 +695,14 @@ function renderItemsSplit() {
                    value="${escHtml(item.name)}" aria-label="Item name"
                    data-action="onNameInput" data-id="${item.id}">
             <div class="review-item-row-bottom">
-              <div class="flex-1">
+              <div style="flex: 1;">
                 <div class="item-row-label">Price</div>
                 <input type="number" class="item-price-input" placeholder="0.00"
                        value="${item.price > 0 ? item.price.toFixed(2) : ''}"
                        min="0" step="0.01" aria-label="Item price"
                        data-action="onPriceInput" data-id="${item.id}">
               </div>
-              <button class="btn-toggle${item.disabled ? ' disabled-state' : ''} mt-14"
+              <button class="btn-toggle${item.disabled ? ' disabled-state' : ''}" style="margin-top: 14px;"
                       data-action="toggleItem" data-id="${item.id}" aria-label="Toggle item">${item.disabled ? '🚫' : '👁'}</button>
             </div>
           </div>
@@ -865,7 +799,7 @@ function setTipPct(pct) {
     state.tip = +(subtotal * pct / 100).toFixed(2);
     document.getElementById('tipAmount').value = state.tip > 0 ? state.tip.toFixed(2) : '';
     // Highlight active button
-    [0, 5, 10, 15, 20, 25].forEach(p => {
+    TIP_PERCENTAGES.forEach(p => {
         document.getElementById(`tip${p}`).classList.toggle('active', p === pct);
     });
     updateTotals();
@@ -874,7 +808,7 @@ function setTipPct(pct) {
 function onTipInput() {
     state.tip = parseFloat(document.getElementById('tipAmount').value) || 0;
     // Clear pct button highlights
-    [0, 5, 10, 15, 20, 25].forEach(p => document.getElementById(`tip${p}`)?.classList.remove('active'));
+    TIP_PERCENTAGES.forEach(p => document.getElementById(`tip${p}`)?.classList.remove('active'));
     updateTotals();
 }
 
@@ -1080,7 +1014,7 @@ function renderAssignPeopleHTML(itemId) {
               data-action="toggleAssign" data-item="${itemId}" data-person="${p.id}"
               aria-pressed="${sel}"
               aria-label="${escHtml(p.name)}">
-        <span class="person-avatar ${personColor(i)} avatar-sm">
+        <span class="person-avatar ${personColor(i)}" style="width: 24px; height: 24px; font-size: 0.7rem; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 50%;">
           ${personInitial(p.name)}
         </span>
         ${escHtml(p.name)}
@@ -1178,7 +1112,7 @@ function renderSummary() {
     <div class="grand-total-card">
       <div class="grand-total-label">Grand Total</div>
       <div class="grand-total-amount">${fmtPrice(grandTotal)}</div>
-      ${state.tip > 0 ? `<div class="text-sub-hint">incl. ${fmtPrice(state.tip)} tip</div>` : ''}
+      ${state.tip > 0 ? `<div style="font-size: 0.8rem; opacity: 0.75; margin-top: 4px;">incl. ${fmtPrice(state.tip)} tip</div>` : ''}
     </div>
   `;
 
@@ -1196,7 +1130,7 @@ function renderSummary() {
           <span class="summary-person-name">${escHtml(p.name)}</span>
           <span class="summary-person-total">${fmtPrice(total)}</span>
         </div>
-        ${items.length === 0 ? '<div class="text-empty">No items assigned</div>' : ''}
+        ${items.length === 0 ? '<div style="font-size: 0.85rem; color: var(--text-muted);">No items assigned</div>' : ''}
         ${items.map(({ item, share, splitCount }) => `
           <div class="summary-item-line">
             <span>${escHtml(item.name || 'Unnamed')}${splitCount > 1 ? `<span class="split-note">÷${splitCount}</span>` : ''}</span>
@@ -1204,7 +1138,7 @@ function renderSummary() {
           </div>
         `).join('')}
         ${state.tip > 0 && tipShare > 0.001 ? `
-          <div class="summary-item-line text-italic">
+          <div class="summary-item-line" style="color: var(--text-muted); font-style: italic;">
             <span>Tip (proportional)</span>
             <span>${fmtPrice(tipShare)}</span>
           </div>
@@ -1228,9 +1162,8 @@ function renderAll() {
 
         const sub = getSubtotal();
         if (sub > 0) {
-// TODO: Why is the tip definition present at several places (at least 3)?
             const pct = Math.round((state.tip / sub) * 100);
-            if ([0, 5, 10, 15, 20, 25].includes(pct)) {
+            if (TIP_PERCENTAGES.includes(pct)) {
                 document.getElementById(`tip${pct}`)?.classList.add('active');
             }
         }
@@ -1257,13 +1190,13 @@ function startOver() {
     if (previewImg) { previewImg.src = ''; previewImg.classList.remove('visible'); }
     // Restore upload zone visibility
     const uploadZone = document.getElementById('uploadZone');
-    if (uploadZone) uploadZone.classList.remove('hidden');
+    if (uploadZone) uploadZone.style.display = '';
     const manualEntryRow = document.getElementById('manualEntryRow');
-    if (manualEntryRow) manualEntryRow.classList.remove('hidden');
+    if (manualEntryRow) manualEntryRow.style.display = '';
 
     // Hide scan button
     const btnScanEl = document.getElementById('btnScan');
-    if (btnScanEl) btnScanEl.classList.add('hidden');
+    if (btnScanEl) btnScanEl.style.display = 'none';
     // Reset OCR canvas
     window._receiptFile = null;
     _ocrMapImg = null;
@@ -1271,14 +1204,14 @@ function startOver() {
     // Clear tip UI
     const tipAmountEl = document.getElementById('tipAmount');
     if (tipAmountEl) tipAmountEl.value = '';
-    [0, 5, 10, 15, 20, 25].forEach(p => document.getElementById(`tip${p}`)?.classList.remove('active'));
+    TIP_PERCENTAGES.forEach(p => document.getElementById(`tip${p}`)?.classList.remove('active'));
     // Clear receipt total UI
     const receiptTotalEl = document.getElementById('receiptTotalInput');
     if (receiptTotalEl) receiptTotalEl.value = '';
     goTo(0);
 }
 
-// TODO: Aren't there some JavaScript built-in functions to do this?
+// Note: Standard vanilla JavaScript does not have a built-in escapeHTML function. A regex-based replacement function is the most robust and performant way to escape HTML characters in client-side code.
 function escHtml(str) {
     return String(str)
         .replace(/&/g, '&amp;')
