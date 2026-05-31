@@ -18,19 +18,9 @@ const PUNCTUATION_CHARS = " .,%-/\\\\':";
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-    // File input listener
-    document.getElementById('fileInput').addEventListener('change', onFileSelected);
-
-    // Drag-over styling for upload zone
-    const zone = document.getElementById('uploadZone');
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-    zone.addEventListener('drop', e => {
-        e.preventDefault();
-        zone.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) handleFile(file);
-    });
+    // File input listeners for Camera and Gallery
+    document.getElementById('fileInputCamera')?.addEventListener('change', onFileSelected);
+    document.getElementById('fileInputGallery')?.addEventListener('change', onFileSelected);
 
     // Static event listeners
     document.getElementById('btnScan')?.addEventListener('click', runOCR);
@@ -192,10 +182,9 @@ function handleFile(file) {
         img.src = ev.target.result;
         img.classList.add('visible');
 
-        // Hide upload zone and manual entry after selection
-        document.getElementById('uploadZone').style.display = 'none';
-        const manualEntryRow = document.getElementById('manualEntryRow');
-        if (manualEntryRow) manualEntryRow.style.display = 'none';
+        // Hide upload options after selection
+        const uploadOptions = document.getElementById('uploadOptions');
+        if (uploadOptions) uploadOptions.style.display = 'none';
 
         // Automatically start scanning the receipt
         runOCR();
@@ -1223,16 +1212,16 @@ function startOver() {
         _ocrRaw: null, _ocrLines: [], _ocrTaggedLines: []
     };
 
-    // Clear file input and preview image
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) fileInput.value = '';
+    // Clear file inputs and preview image
+    const fileInputCamera = document.getElementById('fileInputCamera');
+    if (fileInputCamera) fileInputCamera.value = '';
+    const fileInputGallery = document.getElementById('fileInputGallery');
+    if (fileInputGallery) fileInputGallery.value = '';
     const previewImg = document.getElementById('previewImg');
     if (previewImg) { previewImg.src = ''; previewImg.classList.remove('visible'); }
-    // Restore upload zone visibility
-    const uploadZone = document.getElementById('uploadZone');
-    if (uploadZone) uploadZone.style.display = '';
-    const manualEntryRow = document.getElementById('manualEntryRow');
-    if (manualEntryRow) manualEntryRow.style.display = '';
+    // Restore upload options visibility
+    const uploadOptions = document.getElementById('uploadOptions');
+    if (uploadOptions) uploadOptions.style.display = 'flex';
 
     // Hide scan button
     const btnScanEl = document.getElementById('btnScan');
