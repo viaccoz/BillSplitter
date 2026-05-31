@@ -262,11 +262,11 @@ async function runOCR() {
         state._ocrTaggedLines = taggedLines;
         state.items = parsed.length > 0 ? parsed : [makeItem('', 0)];
 
-        // Auto-fill receipt total from OCR if not already set by user
-        if (detectedTotal != null && state.receiptTotal == null) {
-            state.receiptTotal = detectedTotal;
+        // Auto-fill receipt total from OCR if not already set by user; default to 0 if not detected
+        if (state.receiptTotal == null) {
+            state.receiptTotal = detectedTotal != null ? detectedTotal : 0;
             const rtInput = document.getElementById('receiptTotalInput');
-            if (rtInput) rtInput.value = detectedTotal.toFixed(2);
+            if (rtInput) rtInput.value = state.receiptTotal.toFixed(2);
         }
 
         progress.classList.remove('visible');
@@ -846,7 +846,7 @@ function onTipInput() {
 
 function onReceiptTotalInput() {
     const val = parseFloat(document.getElementById('receiptTotalInput').value);
-    state.receiptTotal = isNaN(val) ? null : val;
+    state.receiptTotal = isNaN(val) ? 0 : val;
     updateTotals();
 }
 
