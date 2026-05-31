@@ -126,14 +126,7 @@ function canGoTo(step) {
             const activeItems = state.items.filter(i => !i.disabled);
             if (activeItems.length === 0) return false;
 
-            // Can't go past Review Items (1) if receipt total is mismatching
-            if (state.receiptTotal != null) {
-                const subtotal = getSubtotal();
-                const totalWithTip = subtotal + state.tip;
-                if (Math.abs(totalWithTip - state.receiptTotal) >= 0.01) {
-                    return false;
-                }
-            }
+            if (checkMismatch()) return false;
         }
 
         // Can't go past People (2) if no people are added
@@ -344,7 +337,7 @@ function parseItemsWithTags(text, ocrLines) {
 
     const SKIP_RE = /\b(total|subtotal|tax(es)?|tva|mwst|vat|service charge|gratuity|change|cash|card(s)?|thank|welcome|table|tisch|date|time|receipt|invoice|order|espece(s)?|espèce(s)?|monnaie|rendu|pourboire|rounding|arrondi|incl\.|couvert|bon(s)?)\b/i;
     const DISCOUNT_RE = /\d+[.,]?\d*\s*%\s*(rabatt|remise|discount|reduction|offert|reduc)/i;
-    const PRICE_TOKEN_RE = /(?:^|[^\d])(\d{1,5}[.,]\d{2})(?=[^\d]|$)/g;
+    const PRICE_TOKEN_RE = /(?:^|[^\d])(-?\d{1,5}[.,]\d{2})(?=[^\d]|$)/g;
 
     // Sort OCR lines by y0 coordinate to guarantee correct physical top-to-bottom order on the receipt.
     // If they are on the same line (y0 difference < 5px), sort left-to-right (x0) to avoid overlapping.
@@ -374,9 +367,10 @@ function parseItemsWithTags(text, ocrLines) {
         let m;
         PRICE_TOKEN_RE.lastIndex = 0;
         while ((m = PRICE_TOKEN_RE.exec(lineText)) !== null) {
+            const rawSign = m[1].startsWith('-') ? -1 : 1;
             const rawNum = m[1].replace(/[^0-9]/g, '');
-            const val = parseFloat(rawNum.slice(0, -2) + '.' + rawNum.slice(-2));
-            if (!isNaN(val) && val > 0 && val < 10000) {
+            const val = rawSign * parseFloat(rawNum.slice(0, -2) + '.' + rawNum.slice(-2));
+            if (!isNaN(val) && val !== 0 && Math.abs(val) < 10000) {
                 prices.push({ val, index: m.index, raw: m[0] });
             }
         }
@@ -671,6 +665,20 @@ function renderItems() {
 function renderItemsPlain() {
     document.getElementById('reviewSplitPanel').style.display = 'none';
     document.getElementById('reviewPlainPanel').style.display = '';
+
+    // Show receipt photo above the items card if a picture was taken/uploaded
+    const previewImg = document.getElementById('previewImg');
+    const plainPreview = document.getElementById('receiptPreviewPlain');
+    if (plainPreview) {
+        const src = previewImg?.src;
+        if (src && src !== '' && !src.endsWith(window.location.href)) {
+            plainPreview.src = src;
+            plainPreview.style.display = 'block';
+        } else {
+            plainPreview.style.display = 'none';
+        }
+    }
+
     const list = document.getElementById('itemsList');
     if (state.items.length === 0) {
         list.innerHTML = '<div class="empty-state"><div class="emoji">🍽️</div>No items yet</div>';
@@ -689,8 +697,8 @@ function renderItemsPlain() {
         <div style="flex: 1;">
           <div class="item-row-label">Price</div>
           <input type="number" class="item-price-input" placeholder="0.00"
-                 value="${item.price > 0 ? item.price.toFixed(2) : ''}"
-                 min="0" step="0.01" aria-label="Item price"
+                 value="${item.price !== 0 ? item.price.toFixed(2) : ''}"
+                 step="0.01" aria-label="Item price"
                  data-action="onPriceInput" data-id="${item.id}">
         </div>
         <button class="btn-toggle${item.disabled ? ' disabled-state' : ''}" style="margin-top: 14px;"
@@ -730,8 +738,8 @@ function renderItemsSplit() {
               <div style="flex: 1;">
                 <div class="item-row-label">Price</div>
                 <input type="number" class="item-price-input" placeholder="0.00"
-                       value="${item.price > 0 ? item.price.toFixed(2) : ''}"
-                       min="0" step="0.01" aria-label="Item price"
+                       value="${item.price !== 0 ? item.price.toFixed(2) : ''}"
+                       step="0.01" aria-label="Item price"
                        data-action="onPriceInput" data-id="${item.id}">
               </div>
               <button class="btn-toggle${item.disabled ? ' disabled-state' : ''}" style="margin-top: 14px;"
