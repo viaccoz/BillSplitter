@@ -318,7 +318,7 @@ function parseItemsWithTags(text, ocrLines) {
 
     const SKIP_RE = /\b(total|subtotal|tax(es)?|tva|mwst|vat|service charge|gratuity|change|cash|card(s)?|thank|welcome|table|tisch|date|time|receipt|invoice|order|espece(s)?|espèce(s)?|monnaie|rendu|pourboire|rounding|arrondi|incl\.|couvert|bon(s)?)\b/i;
     const DISCOUNT_RE = /\d+[.,]?\d*\s*%\s*(rabatt|remise|discount|reduction|offert|reduc)/i;
-    const PRICE_TOKEN_RE = /(?:^|[^\d])(\d{1,5}[., ]\d{2})(?=[^\d]|$)/g;
+    const PRICE_TOKEN_RE = /(?:^|[^\d])(\d{1,5}[.,]\d{2})(?=[^\d]|$)/g;
 
     // Sort OCR lines by y0 coordinate to guarantee correct physical top-to-bottom order on the receipt.
     // If they are on the same line (y0 difference < 5px), sort left-to-right (x0) to avoid overlapping.

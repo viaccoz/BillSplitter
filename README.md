@@ -1,8 +1,8 @@
-# BillSplitter 🧾
+# BillSplitter
 
 Client-side web application for scanning restaurant receipts, detecting items, and easily splitting the receipt.
 
-## Features ✨
+## Features
 
 - Client-side OCR parsing: Powered by [Tesseract.js](https://tesseract.projectnaptha.com/), receipts are processed entirely within the browser. No images or financial data are ever uploaded to a server.
 - Smart total detection: Uses a dynamic programming subset-sum algorithm to intelligently match the parsed item prices against the total on the receipt, filtering out noise, taxes, and change.
