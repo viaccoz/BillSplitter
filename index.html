@@ -67,13 +67,23 @@
       <p class="section-subtitle">Take a photo or upload an image of your receipt.
       </p>
 
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg, image/webp" aria-label="Upload receipt image">
-        <div class="upload-icon">📷</div>
-        <div class="upload-text">
-          <strong>Tap to take a photo</strong>
-          or choose from gallery
-        </div>
+      <div id="uploadOptions" style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">
+        <label class="btn btn-primary btn-full"
+          style="display: flex; justify-content: center; align-items: center; cursor: pointer; margin: 0;">
+          <input type="file" id="fileInputCamera" accept="image/*" capture="environment" style="display: none;">
+          📷 Take Photo
+        </label>
+
+        <label class="btn btn-primary btn-full"
+          style="display: flex; justify-content: center; align-items: center; cursor: pointer; margin: 0;">
+          <input type="file" id="fileInputGallery" accept="image/png, image/jpeg, image/jpg, image/webp"
+            style="display: none;">
+          🖼️ Choose from Gallery
+        </label>
+
+        <button class="btn btn-secondary btn-full" id="btnSkipToItems" style="margin: 0;">
+          ✏️ Enter Items Manually
+        </button>
       </div>
 
       <div class="ocr-progress" id="ocrProgress">
@@ -94,11 +104,6 @@
         </button>
       </div>
 
-      <div class="nav-row" id="manualEntryRow">
-        <button class="btn btn-secondary btn-full" id="btnSkipToItems">
-          ✏️ Enter Items Manually
-        </button>
-      </div>
     </section>
 
     <!-- ===== VIEW 2: REVIEW ITEMS ===== -->
@@ -114,7 +119,8 @@
           </div>
           <div class="review-item-list" id="reviewItemList"></div>
         </div>
-        <button class="btn btn-secondary btn-sm" style="margin-top: 10px; width: 100%;" data-action="addItem">+ Add Item</button>
+        <button class="btn btn-secondary btn-sm" style="margin-top: 10px; width: 100%;" data-action="addItem">+ Add
+          Item</button>
       </div>
 
       <!-- Plain card — shown when items were entered manually -->
@@ -146,8 +152,8 @@
         <div class="tip-row" style="margin-top: 0;">
           <span class="tip-label">Total on receipt:</span>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="receiptTotalInput" min="0" step="0.01" placeholder="0.00" style="width: 100px; flex: none;"
-              aria-label="Receipt total">
+            <input type="number" id="receiptTotalInput" min="0" step="0.01" placeholder="0.00"
+              style="width: 100px; flex: none;" aria-label="Receipt total">
             <button class="btn btn-secondary btn-sm" id="btnCopyTotal">Use Items Total</button>
           </div>
         </div>
