@@ -337,7 +337,7 @@ function parseItemsWithTags(text, ocrLines) {
 
     const SKIP_RE = /\b(total|subtotal|tax(es)?|tva|mwst|vat|service charge|gratuity|change|cash|card(s)?|thank|welcome|table|tisch|date|time|receipt|invoice|order|espece(s)?|espèce(s)?|monnaie|rendu|pourboire|rounding|arrondi|incl\.|couvert|bon(s)?)\b/i;
     const DISCOUNT_RE = /\d+[.,]?\d*\s*%\s*(rabatt|remise|discount|reduction|offert|reduc)/i;
-    const PRICE_TOKEN_RE = /(?:^|[^\d])(-?\d{1,5}[.,]\d{2})(?=[^\d]|$)/g;
+    const PRICE_TOKEN_RE = /(?:^|[^\d])(-\s*)?(\d{1,5}[.,]\d{2})(\s*-)?(?=[^\d]|$)/g;
 
     // Sort OCR lines by y0 coordinate to guarantee correct physical top-to-bottom order on the receipt.
     // If they are on the same line (y0 difference < 5px), sort left-to-right (x0) to avoid overlapping.
@@ -367,8 +367,8 @@ function parseItemsWithTags(text, ocrLines) {
         let m;
         PRICE_TOKEN_RE.lastIndex = 0;
         while ((m = PRICE_TOKEN_RE.exec(lineText)) !== null) {
-            const rawSign = m[1].startsWith('-') ? -1 : 1;
-            const rawNum = m[1].replace(/[^0-9]/g, '');
+            const rawSign = (m[1] && m[1].includes('-')) || (m[3] && m[3].includes('-')) ? -1 : 1;
+            const rawNum = m[2].replace(/[^0-9]/g, '');
             const val = rawSign * parseFloat(rawNum.slice(0, -2) + '.' + rawNum.slice(-2));
             if (!isNaN(val) && val !== 0 && Math.abs(val) < 10000) {
                 prices.push({ val, index: m.index, raw: m[0] });
