@@ -1,3 +1,5 @@
+// TODO: Analyze the code for possible injections.
+
 'use strict';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
